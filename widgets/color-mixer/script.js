@@ -1,57 +1,64 @@
-const sliders = {
-    red: document.querySelector("#red"),
-    green: document.querySelector("#green"),
-    blue: document.querySelector("#blue")
-};
-
-const channelInputs = {
-    red: document.querySelector("#red-value"),
-    green: document.querySelector("#green-value"),
-    blue: document.querySelector("#blue-value")
-};
-
+const modeSelect = document.querySelector("#color-mode");
+const controlsRegion = document.querySelector("#color-controls");
+const sliders = [...document.querySelectorAll('.control input[type="range"]')];
+const channelInputs = [...document.querySelectorAll(".channel-input")];
+const channelLabels = sliders.map((_, index) => document.querySelector(`#channel-${index}-label`));
+const channelUnits = sliders.map((_, index) => document.querySelector(`#channel-${index}-unit`));
 const preview = document.querySelector("#color-preview");
 const hexInput = document.querySelector("#hex-value");
 const copyButton = document.querySelector("#copy-button");
 const copyButtonLabel = copyButton.querySelector("span");
 const copyStatus = document.querySelector("#copy-status");
+const conversionHelpButton = document.querySelector("#open-conversion-help");
+const conversionHelpDialog = document.querySelector("#conversion-help");
+const conversionHelpClose = document.querySelector("#close-conversion-help");
 
+const identity = (values) => ({ ...values });
+
+const modes = {
+    rgb: {
+        name: "RGB",
+        channels: [
+            { key: "red", label: "Red", min: 0, max: 255, step: 1, unit: "", accent: "#ef4444" },
+            { key: "green", label: "Green", min: 0, max: 255, step: 1, unit: "", accent: "#22a06b" },
+            { key: "blue", label: "Blue", min: 0, max: 255, step: 1, unit: "", accent: "#3b82f6" }
+        ],
+        fromRgb: identity,
+        toRgb: identity
+    },
+    ryb: {
+        name: "RYB",
+        channels: [
+            { key: "red", label: "Red", min: 0, max: 255, step: 1, unit: "", accent: "#ef4444" },
+            { key: "yellow", label: "Yellow", min: 0, max: 255, step: 1, unit: "", accent: "#eab308" },
+            { key: "blue", label: "Blue", min: 0, max: 255, step: 1, unit: "", accent: "#3b82f6" }
+        ],
+        fromRgb: ColorConversions.rgbToRyb,
+        toRgb: ColorConversions.rybToRgb
+    },
+    hvc: {
+        name: "HVC",
+        channels: [
+            { key: "hue", label: "Hue", min: 0, max: 360, step: 1, unit: "°", accent: "#8b5cf6" },
+            { key: "value", label: "Value", min: 0, max: 100, step: 1, unit: "%", accent: "#64748b" },
+            { key: "chroma", label: "Chroma", min: 0, max: 100, step: 1, unit: "%", accent: "#ec4899" }
+        ],
+        fromRgb: ColorConversions.rgbToHvc,
+        toRgb: ColorConversions.hvcToRgb
+    }
+};
+
+let activeModeKey = "rgb";
+let activeValues = {};
+let currentRgb = { red: 99, green: 102, blue: 241 };
 let currentHex = "#6366F1";
 
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, Math.round(Number(value))));
+}
+
 function toHex(value) {
-    return Number(value).toString(16).padStart(2, "0").toUpperCase();
-}
-
-function clampChannel(value) {
-    return Math.min(255, Math.max(0, Math.round(Number(value))));
-}
-
-function renderColor(red, green, blue, updateHexInput = true) {
-    const channels = {
-        red: clampChannel(red),
-        green: clampChannel(green),
-        blue: clampChannel(blue)
-    };
-
-    currentHex = `#${toHex(channels.red)}${toHex(channels.green)}${toHex(channels.blue)}`;
-
-    Object.keys(channels).forEach((channel) => {
-        const value = channels[channel];
-        sliders[channel].value = value;
-        channelInputs[channel].value = value;
-        sliders[channel].style.setProperty("--fill", `${(value / 255) * 100}%`);
-    });
-
-    preview.style.backgroundColor = `rgb(${channels.red}, ${channels.green}, ${channels.blue})`;
-    preview.setAttribute("aria-label", `Color preview for ${currentHex}`);
-
-    if (updateHexInput) {
-        hexInput.value = currentHex;
-    }
-
-    hexInput.setAttribute("aria-invalid", "false");
-    copyButtonLabel.textContent = "Copy";
-    copyStatus.textContent = "";
+    return clamp(value, 0, 255).toString(16).padStart(2, "0").toUpperCase();
 }
 
 function parseHex(value) {
@@ -72,34 +79,127 @@ function parseHex(value) {
     };
 }
 
-Object.keys(sliders).forEach((channel) => {
-    sliders[channel].addEventListener("input", () => {
-        renderColor(sliders.red.value, sliders.green.value, sliders.blue.value);
+function getChannelMaximum(channel) {
+    if (activeModeKey === "hvc" && channel.key === "chroma") {
+        return clamp(activeValues.value, 0, 100);
+    }
+
+    return channel.max;
+}
+
+function normalizeActiveValues() {
+    const mode = modes[activeModeKey];
+
+    mode.channels.forEach((channel) => {
+        const maximum = getChannelMaximum(channel);
+        activeValues[channel.key] = clamp(activeValues[channel.key], channel.min, maximum);
+    });
+}
+
+function updateControlValue(index) {
+    const channel = modes[activeModeKey].channels[index];
+    const maximum = getChannelMaximum(channel);
+    const value = activeValues[channel.key];
+
+    sliders[index].max = maximum;
+    channelInputs[index].max = maximum;
+    sliders[index].value = value;
+    channelInputs[index].value = value;
+    sliders[index].style.setProperty(
+        "--fill",
+        `${maximum === channel.min ? 0 : ((value - channel.min) / (maximum - channel.min)) * 100}%`
+    );
+}
+
+function renderControls() {
+    const mode = modes[activeModeKey];
+    controlsRegion.setAttribute("aria-label", `${mode.name} color controls`);
+
+    mode.channels.forEach((channel, index) => {
+        channelLabels[index].textContent = channel.label;
+        channelUnits[index].textContent = channel.unit;
+
+        sliders[index].min = channel.min;
+        sliders[index].step = channel.step;
+        sliders[index].style.setProperty("--track-color", channel.accent);
+
+        channelInputs[index].min = channel.min;
+        channelInputs[index].step = channel.step;
+        channelInputs[index].setAttribute("aria-label", `${channel.label} value`);
     });
 
-    channelInputs[channel].addEventListener("input", () => {
-        const value = Number(channelInputs[channel].value);
+    normalizeActiveValues();
+    mode.channels.forEach((_, index) => updateControlValue(index));
+}
 
-        if (channelInputs[channel].value !== "" && value >= 0 && value <= 255) {
-            renderColor(
-                channel === "red" ? value : sliders.red.value,
-                channel === "green" ? value : sliders.green.value,
-                channel === "blue" ? value : sliders.blue.value
-            );
+function syncControlsFromRgb() {
+    activeValues = modes[activeModeKey].fromRgb(currentRgb);
+    renderControls();
+}
+
+function renderPreview(updateHexInput = true) {
+    currentRgb = {
+        red: clamp(currentRgb.red, 0, 255),
+        green: clamp(currentRgb.green, 0, 255),
+        blue: clamp(currentRgb.blue, 0, 255)
+    };
+    currentHex = `#${toHex(currentRgb.red)}${toHex(currentRgb.green)}${toHex(currentRgb.blue)}`;
+
+    preview.style.backgroundColor = `rgb(${currentRgb.red}, ${currentRgb.green}, ${currentRgb.blue})`;
+    preview.setAttribute("aria-label", `Color preview for ${currentHex}`);
+
+    if (updateHexInput) {
+        hexInput.value = currentHex;
+    }
+
+    hexInput.setAttribute("aria-invalid", "false");
+    copyButtonLabel.textContent = "Copy";
+    copyStatus.textContent = "";
+}
+
+function applyActiveValues() {
+    normalizeActiveValues();
+    modes[activeModeKey].channels.forEach((_, index) => updateControlValue(index));
+    currentRgb = modes[activeModeKey].toRgb(activeValues);
+    renderPreview();
+}
+
+modeSelect.addEventListener("change", () => {
+    activeModeKey = modeSelect.value;
+    syncControlsFromRgb();
+    copyButtonLabel.textContent = "Copy";
+    copyStatus.textContent = "";
+});
+
+sliders.forEach((slider, index) => {
+    slider.addEventListener("input", () => {
+        const channel = modes[activeModeKey].channels[index];
+        activeValues[channel.key] = Number(slider.value);
+        applyActiveValues();
+    });
+});
+
+channelInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+        const channel = modes[activeModeKey].channels[index];
+        const maximum = getChannelMaximum(channel);
+        const value = Number(input.value);
+
+        if (input.value !== "" && value >= channel.min && value <= maximum) {
+            activeValues[channel.key] = value;
+            applyActiveValues();
         }
     });
 
-    channelInputs[channel].addEventListener("change", () => {
-        const fallback = sliders[channel].value;
-        const value = channelInputs[channel].value === ""
-            ? fallback
-            : clampChannel(channelInputs[channel].value);
+    input.addEventListener("change", () => {
+        const channel = modes[activeModeKey].channels[index];
+        const maximum = getChannelMaximum(channel);
+        const fallback = activeValues[channel.key];
 
-        renderColor(
-            channel === "red" ? value : sliders.red.value,
-            channel === "green" ? value : sliders.green.value,
-            channel === "blue" ? value : sliders.blue.value
-        );
+        activeValues[channel.key] = input.value === ""
+            ? fallback
+            : clamp(input.value, channel.min, maximum);
+        applyActiveValues();
     });
 });
 
@@ -107,7 +207,9 @@ hexInput.addEventListener("input", () => {
     const color = parseHex(hexInput.value);
 
     if (color) {
-        renderColor(color.red, color.green, color.blue, false);
+        currentRgb = color;
+        renderPreview(false);
+        syncControlsFromRgb();
     } else {
         hexInput.setAttribute("aria-invalid", "true");
     }
@@ -117,7 +219,9 @@ hexInput.addEventListener("change", () => {
     const color = parseHex(hexInput.value);
 
     if (color) {
-        renderColor(color.red, color.green, color.blue);
+        currentRgb = color;
+        renderPreview();
+        syncControlsFromRgb();
     } else {
         hexInput.value = currentHex;
         hexInput.setAttribute("aria-invalid", "false");
@@ -150,4 +254,24 @@ async function copyColor() {
 }
 
 copyButton.addEventListener("click", copyColor);
-renderColor(99, 102, 241);
+
+conversionHelpButton.addEventListener("click", () => {
+    conversionHelpDialog.showModal();
+});
+
+conversionHelpClose.addEventListener("click", () => {
+    conversionHelpDialog.close();
+});
+
+conversionHelpDialog.addEventListener("click", (event) => {
+    if (event.target === conversionHelpDialog) {
+        conversionHelpDialog.close();
+    }
+});
+
+conversionHelpDialog.addEventListener("close", () => {
+    conversionHelpButton.focus();
+});
+
+syncControlsFromRgb();
+renderPreview();

@@ -3,71 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Mix red, green, and blue values to create and copy a color.">
+    <meta name="description" content="Mix and convert colors with RGB, RYB, and HVC controls.">
     <title>Color Mixer</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <main class="mixer">
         <header class="mixer__header">
-            <p class="eyebrow">RGB tool</p>
-            <h1>Color mixer</h1>
-            <p class="intro">Adjust the sliders to find your color.</p>
+            <p class="eyebrow">Multi-mode tool</p>
+            <div class="mixer__title-row">
+                <h1>Color mixer</h1>
+                <button class="help-trigger" type="button" id="open-conversion-help">
+                    How it works
+                </button>
+            </div>
+            <p class="intro">Choose a color model, then adjust the shared controls.</p>
         </header>
 
         <div class="mixer__content">
-            <section class="controls" aria-label="RGB color controls">
-                <div class="control control--red">
-                    <div class="control__label">
-                        <label for="red">Red</label>
+            <div>
+                <div class="mode-control">
+                    <label for="color-mode">Color model</label>
+                    <select id="color-mode" name="color-mode">
+                        <option value="rgb">RGB — screen light</option>
+                        <option value="ryb">RYB — paint style</option>
+                        <option value="hvc">HVC — hue, value, chroma</option>
+                    </select>
+                </div>
+
+                <section class="controls" id="color-controls" aria-label="RGB color controls">
+                    <div class="control">
+                        <div class="control__label">
+                            <label id="channel-0-label" for="channel-0">Red</label>
+                            <span class="channel-entry">
+                                <input
+                                    class="channel-input"
+                                    type="number"
+                                    id="channel-0-value"
+                                    min="0"
+                                    max="255"
+                                    value="99"
+                                    inputmode="decimal"
+                                    aria-labelledby="channel-0-label"
+                                >
+                                <span class="channel-unit" id="channel-0-unit" aria-hidden="true"></span>
+                            </span>
+                        </div>
                         <input
-                            class="channel-input"
-                            type="number"
-                            id="red-value"
+                            type="range"
+                            id="channel-0"
                             min="0"
                             max="255"
                             value="99"
-                            inputmode="numeric"
-                            aria-label="Red value"
+                            aria-labelledby="channel-0-label"
                         >
                     </div>
-                    <input type="range" id="red" name="red" min="0" max="255" value="99">
-                </div>
 
-                <div class="control control--green">
-                    <div class="control__label">
-                        <label for="green">Green</label>
+                    <div class="control">
+                        <div class="control__label">
+                            <label id="channel-1-label" for="channel-1">Green</label>
+                            <span class="channel-entry">
+                                <input
+                                    class="channel-input"
+                                    type="number"
+                                    id="channel-1-value"
+                                    min="0"
+                                    max="255"
+                                    value="102"
+                                    inputmode="decimal"
+                                    aria-labelledby="channel-1-label"
+                                >
+                                <span class="channel-unit" id="channel-1-unit" aria-hidden="true"></span>
+                            </span>
+                        </div>
                         <input
-                            class="channel-input"
-                            type="number"
-                            id="green-value"
+                            type="range"
+                            id="channel-1"
                             min="0"
                             max="255"
                             value="102"
-                            inputmode="numeric"
-                            aria-label="Green value"
+                            aria-labelledby="channel-1-label"
                         >
                     </div>
-                    <input type="range" id="green" name="green" min="0" max="255" value="102">
-                </div>
 
-                <div class="control control--blue">
-                    <div class="control__label">
-                        <label for="blue">Blue</label>
+                    <div class="control">
+                        <div class="control__label">
+                            <label id="channel-2-label" for="channel-2">Blue</label>
+                            <span class="channel-entry">
+                                <input
+                                    class="channel-input"
+                                    type="number"
+                                    id="channel-2-value"
+                                    min="0"
+                                    max="255"
+                                    value="241"
+                                    inputmode="decimal"
+                                    aria-labelledby="channel-2-label"
+                                >
+                                <span class="channel-unit" id="channel-2-unit" aria-hidden="true"></span>
+                            </span>
+                        </div>
                         <input
-                            class="channel-input"
-                            type="number"
-                            id="blue-value"
+                            type="range"
+                            id="channel-2"
                             min="0"
                             max="255"
                             value="241"
-                            inputmode="numeric"
-                            aria-label="Blue value"
+                            aria-labelledby="channel-2-label"
                         >
                     </div>
-                    <input type="range" id="blue" name="blue" min="0" max="255" value="241">
-                </div>
-            </section>
+                </section>
+            </div>
 
             <section class="result" aria-label="Mixed color">
                 <div
@@ -105,6 +151,112 @@
         </div>
     </main>
 
+    <dialog
+        class="conversion-dialog"
+        id="conversion-help"
+        aria-labelledby="conversion-help-title"
+        aria-describedby="conversion-help-summary"
+    >
+        <div class="dialog__content">
+            <header class="dialog__header">
+                <div>
+                    <p class="eyebrow">Color conversion</p>
+                    <h2 id="conversion-help-title">How the modes connect</h2>
+                </div>
+                <button class="dialog__close" type="button" id="close-conversion-help">
+                    Close
+                </button>
+            </header>
+
+            <p id="conversion-help-summary">
+                Every mode describes a color with three numbers. The mixer uses RGB
+                as the bridge between them.
+            </p>
+
+            <p class="conversion-route" aria-label="RYB converts to RGB, which converts to HVC">
+                <span>RYB</span>
+                <span aria-hidden="true">&harr;</span>
+                <span>RGB</span>
+                <span aria-hidden="true">&harr;</span>
+                <span>HVC</span>
+            </p>
+
+            <div class="mode-explanations">
+                <section>
+                    <h3>RGB</h3>
+                    <p>Red, green, and blue light directly set the screen color.</p>
+                </section>
+                <section>
+                    <h3>RYB</h3>
+                    <p>
+                        Red, yellow, and blue act like paint amounts. The mixer finds an
+                        approximate RGB match because screens use light, not paint. Going
+                        from RGB to RYB, it removes shared white, turns red-and-green
+                        overlap into yellow, represents remaining green with yellow and
+                        blue, rescales the result, then restores the white.
+                    </p>
+                </section>
+                <section>
+                    <h3>HVC</h3>
+                    <p>
+                        Hue chooses the color family, Value controls brightness, and
+                        Chroma controls color strength. Chroma cannot be higher than Value.
+                    </p>
+                </section>
+            </div>
+
+            <p class="conversion-note">
+                When you switch modes, the preview stays the same and the controls show
+                the closest equivalent values.
+            </p>
+
+            <details class="conversion-math">
+                <summary>Conversion math</summary>
+                <div class="conversion-math__body">
+                    <p>
+                        First, write the RGB channels as
+                        <code>r, g, b &isin; [0, 1]</code>.
+                    </p>
+                    <ul class="formula-list">
+                        <li><code>V = max(r, g, b)</code></li>
+                        <li>
+                            <code>C = V &minus; min(r, g, b)</code>, so
+                            <code>0 &le; C &le; V</code>
+                        </li>
+                    </ul>
+
+                    <p>Hue uses six 60-degree sections of the color wheel:</p>
+                    <ul class="formula-list">
+                        <li><code>H = 0</code> when <code>C = 0</code></li>
+                        <li>
+                            <code>H = 60 &times; (((g &minus; b) / C) mod 6)</code>
+                            when red is largest
+                        </li>
+                        <li>
+                            <code>H = 60 &times; ((b &minus; r) / C + 2)</code>
+                            when green is largest
+                        </li>
+                        <li>
+                            <code>H = 60 &times; ((r &minus; g) / C + 4)</code>
+                            when blue is largest
+                        </li>
+                    </ul>
+
+                    <p>
+                        To return to RGB, the mixer selects the matching 60-degree hue
+                        section and adds <code>V &minus; C</code> to each channel.
+                    </p>
+                    <p>
+                        RYB has no equally compact formula. Its step-by-step conversion is
+                        nonlinear, which is why it behaves more like a paint-style
+                        approximation than an exact physical pigment model.
+                    </p>
+                </div>
+            </details>
+        </div>
+    </dialog>
+
+    <script src="color-conversions.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

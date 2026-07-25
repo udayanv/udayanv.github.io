@@ -1,0 +1,334 @@
+:root {
+    color-scheme: light;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #172033;
+    background: #f5f7fb;
+    font-synthesis: none;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at 20% 10%, rgba(99, 102, 241, 0.1), transparent 32rem),
+        #f5f7fb;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+.mixer {
+    width: min(100%, 820px);
+    padding: clamp(24px, 5vw, 48px);
+    border: 1px solid rgba(23, 32, 51, 0.08);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 24px 70px rgba(41, 51, 78, 0.12);
+    backdrop-filter: blur(12px);
+}
+
+.mixer__header {
+    margin-bottom: 34px;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: #6366f1;
+    font-size: 0.75rem;
+    font-weight: 750;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+h1 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+}
+
+.intro {
+    margin: 10px 0 0;
+    color: #667085;
+    font-size: 1rem;
+}
+
+.mixer__content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.72fr);
+    gap: clamp(28px, 6vw, 56px);
+    align-items: center;
+}
+
+.controls {
+    display: grid;
+    gap: 28px;
+}
+
+.control__label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.control label {
+    font-weight: 650;
+}
+
+.channel-input {
+    width: 4.5rem;
+    padding: 6px 8px;
+    border: 1px solid #d8dde7;
+    border-radius: 9px;
+    color: #667085;
+    background: #ffffff;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.channel-input:focus,
+#hex-value:focus {
+    border-color: #818cf8;
+    outline: 3px solid rgba(99, 102, 241, 0.18);
+}
+
+.control input[type="range"] {
+    --track-color: #6366f1;
+    width: 100%;
+    height: 22px;
+    margin: 0;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.control--red input {
+    --track-color: #ef4444;
+}
+
+.control--green input {
+    --track-color: #22a06b;
+}
+
+.control--blue input {
+    --track-color: #3b82f6;
+}
+
+.control input[type="range"]::-webkit-slider-runnable-track {
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(
+        to right,
+        var(--track-color) 0 var(--fill),
+        #e7eaf0 var(--fill) 100%
+    );
+}
+
+.control input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -6.5px;
+    appearance: none;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: var(--track-color);
+    box-shadow: 0 1px 4px rgba(23, 32, 51, 0.28);
+}
+
+.control input[type="range"]::-moz-range-track {
+    height: 7px;
+    border-radius: 999px;
+    background: #e7eaf0;
+}
+
+.control input[type="range"]::-moz-range-progress {
+    height: 7px;
+    border-radius: 999px;
+    background: var(--track-color);
+}
+
+.control input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: var(--track-color);
+    box-shadow: 0 1px 4px rgba(23, 32, 51, 0.28);
+}
+
+.control input[type="range"]:focus-visible {
+    outline: none;
+}
+
+.control input[type="range"]:focus-visible::-webkit-slider-thumb {
+    outline: 3px solid rgba(99, 102, 241, 0.3);
+    outline-offset: 3px;
+}
+
+.control input[type="range"]:focus-visible::-moz-range-thumb {
+    outline: 3px solid rgba(99, 102, 241, 0.3);
+    outline-offset: 3px;
+}
+
+.result {
+    min-width: 0;
+}
+
+.preview {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 8px solid #ffffff;
+    border-radius: 22px;
+    background: rgb(99, 102, 241);
+    box-shadow: 0 16px 36px rgba(23, 32, 51, 0.18);
+    transition: background-color 120ms ease;
+}
+
+.color-value {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.color-value__label {
+    display: block;
+    margin-bottom: 3px;
+    color: #7b8496;
+    font-size: 0.75rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+#hex-value {
+    width: 8.1rem;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: #172033;
+    background: #f5f7fb;
+    font-size: 1.15rem;
+    font-weight: 750;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+#hex-value[aria-invalid="true"] {
+    border-color: #dc2626;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+#copy-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 42px;
+    padding: 0 15px;
+    border: 0;
+    border-radius: 12px;
+    color: #ffffff;
+    background: #172033;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform 150ms ease, background-color 150ms ease;
+}
+
+#copy-button:hover {
+    background: #2d3850;
+    transform: translateY(-1px);
+}
+
+#copy-button:active {
+    transform: translateY(0);
+}
+
+#copy-button:focus-visible {
+    outline: 3px solid rgba(99, 102, 241, 0.35);
+    outline-offset: 3px;
+}
+
+#copy-button svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.status {
+    min-height: 1.25rem;
+    margin: 8px 0 -1.25rem;
+    color: #667085;
+    font-size: 0.8rem;
+    text-align: right;
+}
+
+@media (max-width: 640px) {
+    body {
+        padding: 16px;
+    }
+
+    .mixer {
+        border-radius: 22px;
+    }
+
+    .mixer__header {
+        margin-bottom: 28px;
+    }
+
+    .mixer__content {
+        grid-template-columns: 1fr;
+    }
+
+    .result {
+        display: grid;
+        grid-template-columns: minmax(110px, 0.75fr) minmax(150px, 1fr);
+        gap: 18px;
+        align-items: center;
+    }
+
+    .color-value {
+        margin-top: 0;
+        flex-wrap: wrap;
+    }
+
+    .status {
+        grid-column: 2;
+        margin: -10px 0 0;
+        text-align: left;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

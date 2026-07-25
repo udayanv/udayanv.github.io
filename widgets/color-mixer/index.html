@@ -3,10 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Color mixer</title>
+    <meta name="description" content="Mix red, green, and blue values to create and copy a color.">
+    <title>Color Mixer</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Color Mixer!</h1>
-    <p>This site will eventually contain a color mixer.</p>
+    <main class="mixer">
+        <header class="mixer__header">
+            <p class="eyebrow">RGB tool</p>
+            <h1>Color mixer</h1>
+            <p class="intro">Adjust the sliders to find your color.</p>
+        </header>
+
+        <div class="mixer__content">
+            <section class="controls" aria-label="RGB color controls">
+                <div class="control control--red">
+                    <div class="control__label">
+                        <label for="red">Red</label>
+                        <input
+                            class="channel-input"
+                            type="number"
+                            id="red-value"
+                            min="0"
+                            max="255"
+                            value="99"
+                            inputmode="numeric"
+                            aria-label="Red value"
+                        >
+                    </div>
+                    <input type="range" id="red" name="red" min="0" max="255" value="99">
+                </div>
+
+                <div class="control control--green">
+                    <div class="control__label">
+                        <label for="green">Green</label>
+                        <input
+                            class="channel-input"
+                            type="number"
+                            id="green-value"
+                            min="0"
+                            max="255"
+                            value="102"
+                            inputmode="numeric"
+                            aria-label="Green value"
+                        >
+                    </div>
+                    <input type="range" id="green" name="green" min="0" max="255" value="102">
+                </div>
+
+                <div class="control control--blue">
+                    <div class="control__label">
+                        <label for="blue">Blue</label>
+                        <input
+                            class="channel-input"
+                            type="number"
+                            id="blue-value"
+                            min="0"
+                            max="255"
+                            value="241"
+                            inputmode="numeric"
+                            aria-label="Blue value"
+                        >
+                    </div>
+                    <input type="range" id="blue" name="blue" min="0" max="255" value="241">
+                </div>
+            </section>
+
+            <section class="result" aria-label="Mixed color">
+                <div
+                    class="preview"
+                    id="color-preview"
+                    role="img"
+                    aria-label="Color preview for #6366F1"
+                ></div>
+                <div class="color-value">
+                    <div>
+                        <label class="color-value__label" for="hex-value">Hex color</label>
+                        <input
+                            id="hex-value"
+                            type="text"
+                            value="#6366F1"
+                            maxlength="7"
+                            spellcheck="false"
+                            autocomplete="off"
+                            aria-describedby="hex-hint"
+                        >
+                        <span class="visually-hidden" id="hex-hint">
+                            Enter a three or six digit hexadecimal color.
+                        </span>
+                    </div>
+                    <button type="button" id="copy-button" aria-describedby="copy-status">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="9" y="9" width="10" height="10" rx="2"></rect>
+                            <path d="M15 9V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path>
+                        </svg>
+                        <span>Copy</span>
+                    </button>
+                </div>
+                <p class="status" id="copy-status" role="status" aria-live="polite"></p>
+            </section>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
 </body>
 </html>

@@ -30,7 +30,7 @@ html {
 }
 
 body {
-  min-width: 320px;
+  min-width: 280px;
   margin: 0;
   color: var(--ink);
   background: var(--page);
@@ -608,6 +608,11 @@ input[type="range"] {
   .difficulty-bar {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  select,
+  .button {
+    min-height: 44px;
   }
 
   .difficulty-heading {

@@ -14,202 +14,214 @@
   <body>
     <main class="page-shell">
       <header class="intro">
-        <p class="eyebrow">Artist training</p>
-        <h1>Color Perception Game</h1>
+        <div>
+          <p class="eyebrow">Artist training</p>
+          <h1>Color Perception Game</h1>
+        </div>
         <p class="intro-copy">
-          Compare the two swatches, then describe how Color B differs from
-          Color A on each axis.
+          Compare the swatches, then place Color B on each axis relative to
+          Color A.
         </p>
       </header>
 
-      <section class="panel difficulty-panel" aria-labelledby="difficulty-title">
-        <div class="section-heading">
-          <div>
-            <p class="step-label">Settings</p>
-            <h2 id="difficulty-title">Round difficulty</h2>
-          </div>
-          <p>Changes apply to the next round.</p>
+      <section class="difficulty-bar" aria-labelledby="difficulty-title">
+        <div class="difficulty-heading">
+          <p class="step-label">Difficulty</p>
+          <h2 id="difficulty-title">Round settings</h2>
         </div>
 
-        <div class="difficulty-controls">
-          <label class="control-group" for="max-axes">
-            <span>Maximum axes that may differ</span>
-            <select id="max-axes" name="maxAxes">
-              <option value="1">1 axis</option>
-              <option value="2" selected>Up to 2 axes</option>
-              <option value="3">Up to 3 axes</option>
-            </select>
-          </label>
+        <label class="control-group" for="max-axes">
+          <span>Axes that may differ</span>
+          <select id="max-axes" name="maxAxes">
+            <option value="1">1 axis</option>
+            <option value="2" selected>Up to 2 axes</option>
+            <option value="3">Up to 3 axes</option>
+          </select>
+        </label>
 
-          <label class="control-group" for="min-delta">
-            <span>
-              Minimum change
-              <output id="min-delta-output" for="min-delta">5 LAB units</output>
-            </span>
-            <input
-              id="min-delta"
-              name="minDelta"
-              type="range"
-              min="1"
-              max="20"
-              value="5"
-              step="1"
-            >
-            <span class="range-labels" aria-hidden="true">
-              <span>Subtle</span>
-              <span>Pronounced</span>
-            </span>
-          </label>
-        </div>
+        <label class="control-group magnitude-control" for="min-delta">
+          <span>
+            Minimum change
+            <output id="min-delta-output" for="min-delta">5 units</output>
+          </span>
+          <input
+            id="min-delta"
+            name="minDelta"
+            type="range"
+            min="1"
+            max="20"
+            value="5"
+            step="1"
+          >
+        </label>
+
+        <p class="setting-note">Changing either setting creates a new round.</p>
       </section>
 
-      <section class="swatch-section" aria-labelledby="compare-title">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="step-label">Step 1</p>
-            <h2 id="compare-title">Compare the colors</h2>
-          </div>
-          <p>Look back and forth before answering.</p>
-        </div>
-
-        <div class="swatch-grid">
-          <figure class="swatch-card">
-            <div
-              id="swatch-a"
-              class="swatch"
-              role="img"
-              aria-label="Color A swatch"
-            ></div>
-            <figcaption>
-              <strong>Color A</strong>
-              <span>Reference</span>
-            </figcaption>
-          </figure>
-
-          <figure class="swatch-card">
-            <div
-              id="swatch-b"
-              class="swatch"
-              role="img"
-              aria-label="Color B swatch"
-            ></div>
-            <figcaption>
-              <strong>Color B</strong>
-              <span>Comparison</span>
-            </figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section class="questions-section" aria-labelledby="questions-title">
-        <div class="section-heading">
-          <div>
-            <p class="step-label">Step 2</p>
-            <h2 id="questions-title">Describe Color B</h2>
-          </div>
-          <p>Choose one answer for every axis.</p>
-        </div>
-
-        <form id="answer-form">
-          <div class="question-grid">
-            <fieldset class="question-card" data-axis="l">
-              <legend>
-                <span class="axis-symbol">L*</span>
-                <span>
-                  <strong>Lightness</strong>
-                  <small>Is Color B darker or lighter?</small>
-                </span>
-              </legend>
-              <div class="option-list">
-                <label class="answer-option">
-                  <input type="radio" name="l" value="lower">
-                  <span class="option-copy">Darker</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-                <label class="answer-option">
-                  <input type="radio" name="l" value="same">
-                  <span class="option-copy">Same lightness</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-                <label class="answer-option">
-                  <input type="radio" name="l" value="higher">
-                  <span class="option-copy">Lighter</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-              </div>
-            </fieldset>
-
-            <fieldset class="question-card" data-axis="a">
-              <legend>
-                <span class="axis-symbol">a*</span>
-                <span>
-                  <strong>Green–red axis</strong>
-                  <small>Which direction does Color B shift?</small>
-                </span>
-              </legend>
-              <div class="option-list">
-                <label class="answer-option">
-                  <input type="radio" name="a" value="lower">
-                  <span class="option-copy">More green</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-                <label class="answer-option">
-                  <input type="radio" name="a" value="same">
-                  <span class="option-copy">Same</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-                <label class="answer-option">
-                  <input type="radio" name="a" value="higher">
-                  <span class="option-copy">More red</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-              </div>
-            </fieldset>
-
-            <fieldset class="question-card" data-axis="b">
-              <legend>
-                <span class="axis-symbol">b*</span>
-                <span>
-                  <strong>Blue–yellow axis</strong>
-                  <small>Which direction does Color B shift?</small>
-                </span>
-              </legend>
-              <div class="option-list">
-                <label class="answer-option">
-                  <input type="radio" name="b" value="lower">
-                  <span class="option-copy">More blue</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-                <label class="answer-option">
-                  <input type="radio" name="b" value="same">
-                  <span class="option-copy">Same</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-                <label class="answer-option">
-                  <input type="radio" name="b" value="higher">
-                  <span class="option-copy">More yellow</span>
-                  <span class="option-feedback" aria-hidden="true"></span>
-                </label>
-              </div>
-            </fieldset>
+      <div class="training-workspace">
+        <section class="swatch-section" aria-labelledby="compare-title">
+          <div class="section-heading">
+            <div>
+              <p class="step-label">Step 1</p>
+              <h2 id="compare-title">Compare</h2>
+            </div>
+            <p>Look back and forth.</p>
           </div>
 
-          <div class="form-actions">
-            <p id="answer-progress">Select an answer for all three axes.</p>
-            <button id="submit-answer" class="button primary-button" type="submit" disabled>
-              Submit answers
-            </button>
-          </div>
-        </form>
-      </section>
+          <div class="swatch-grid">
+            <figure class="swatch-card">
+              <div
+                id="swatch-a"
+                class="swatch"
+                role="img"
+                aria-label="Color A swatch"
+              ></div>
+              <figcaption>
+                <strong>Color A</strong>
+                <span>Reference</span>
+              </figcaption>
+            </figure>
 
-      <section id="results" class="panel results-panel" aria-labelledby="results-title" hidden>
+            <figure class="swatch-card">
+              <div
+                id="swatch-b"
+                class="swatch"
+                role="img"
+                aria-label="Color B swatch"
+              ></div>
+              <figcaption>
+                <strong>Color B</strong>
+                <span>Comparison</span>
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="questions-section" aria-labelledby="questions-title">
+          <div class="section-heading">
+            <div>
+              <p class="step-label">Step 2</p>
+              <h2 id="questions-title">Place Color B</h2>
+            </div>
+            <p>Choose one position on each axis.</p>
+          </div>
+
+          <form id="answer-form">
+            <div class="question-grid">
+              <fieldset class="question-card" data-axis="l">
+                <legend>
+                  <span class="axis-symbol">L*</span>
+                  <span>
+                    <strong>Lightness</strong>
+                    <small>Darker to lighter</small>
+                  </span>
+                </legend>
+                <div class="option-list">
+                  <label class="answer-option">
+                    <input type="radio" name="l" value="lower">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">Darker</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                  <label class="answer-option">
+                    <input type="radio" name="l" value="same">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">Same lightness</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                  <label class="answer-option">
+                    <input type="radio" name="l" value="higher">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">Lighter</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="question-card" data-axis="a">
+                <legend>
+                  <span class="axis-symbol">a*</span>
+                  <span>
+                    <strong>Green–red</strong>
+                    <small>Greener to redder</small>
+                  </span>
+                </legend>
+                <div class="option-list">
+                  <label class="answer-option">
+                    <input type="radio" name="a" value="lower">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">More green</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                  <label class="answer-option">
+                    <input type="radio" name="a" value="same">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">Same</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                  <label class="answer-option">
+                    <input type="radio" name="a" value="higher">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">More red</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="question-card" data-axis="b">
+                <legend>
+                  <span class="axis-symbol">b*</span>
+                  <span>
+                    <strong>Blue–yellow</strong>
+                    <small>Bluer to yellower</small>
+                  </span>
+                </legend>
+                <div class="option-list">
+                  <label class="answer-option">
+                    <input type="radio" name="b" value="lower">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">More blue</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                  <label class="answer-option">
+                    <input type="radio" name="b" value="same">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">Same</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                  <label class="answer-option">
+                    <input type="radio" name="b" value="higher">
+                    <span class="option-marker" aria-hidden="true"></span>
+                    <span class="option-copy">More yellow</span>
+                    <span class="option-feedback" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+
+            <div class="form-actions">
+              <p id="answer-progress">Select all three axes.</p>
+              <button id="submit-answer" class="button primary-button" type="submit" disabled>
+                Submit
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <section id="results" class="results-panel" aria-labelledby="results-title" hidden>
         <div class="result-header">
           <div>
             <p class="step-label">Round result</p>
-            <h2 id="results-title">Color comparison revealed</h2>
+            <h2 id="results-title">Color transition revealed</h2>
           </div>
           <p id="round-summary" class="round-summary"></p>
+        </div>
+
+        <div class="transition-block">
+          <h3>LAB transition</h3>
+          <p>Three equal steps between Color A and Color B.</p>
+          <div id="transition-strip" class="transition-strip"></div>
         </div>
 
         <div id="delta-list" class="delta-list"></div>
@@ -224,15 +236,12 @@
         </button>
       </section>
 
-      <section class="panel score-panel" aria-labelledby="score-title">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="step-label">Current session</p>
-            <h2 id="score-title">Score</h2>
-          </div>
-          <p id="total-score">0 rounds · 0 of 0 axis answers correct</p>
+      <section class="score-panel" aria-labelledby="score-title">
+        <div>
+          <p class="step-label">Current session</p>
+          <h2 id="score-title">Score</h2>
         </div>
-
+        <p id="total-score">0 rounds · 0 of 0 axis answers correct</p>
         <dl class="axis-scores">
           <div>
             <dt>Lightness L*</dt>

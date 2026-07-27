@@ -48,6 +48,7 @@ const elements = {
   answerProgress: document.querySelector("#answer-progress"),
   results: document.querySelector("#results"),
   roundSummary: document.querySelector("#round-summary"),
+  transitionStrip: document.querySelector("#transition-strip"),
   deltaList: document.querySelector("#delta-list"),
   labA: document.querySelector("#lab-a"),
   labB: document.querySelector("#lab-b"),
@@ -136,6 +137,14 @@ function roundToTenth(value) {
   return Math.round(value * 10) / 10;
 }
 
+function interpolateLab(labA, labB, amount) {
+  return {
+    l: labA.l + (labB.l - labA.l) * amount,
+    a: labA.a + (labB.a - labA.a) * amount,
+    b: labA.b + (labB.b - labA.b) * amount,
+  };
+}
+
 /**
  * Uses rejection sampling for the whole pair. Base colors are kept away from
  * extreme LAB edges; a proposal is accepted only when both colors convert to
@@ -186,11 +195,17 @@ function generateRound(maxAxes, minMagnitude, random = Math.random) {
     const rgbB = labToSrgb(labB);
     if (!rgbA || !rgbB) continue;
 
+    const transitionColors = [0.25, 0.5, 0.75].map((amount) =>
+      labToSrgb(interpolateLab(labA, labB, amount)),
+    );
+    if (transitionColors.some((color) => color === null)) continue;
+
     return {
       labA,
       labB,
       rgbA,
       rgbB,
+      transitionColors,
       deltas,
       changedAxes,
       correct: Object.fromEntries(
@@ -245,8 +260,9 @@ function renderNewRound() {
     .forEach((input) => (input.disabled = false));
   elements.submit.hidden = false;
   elements.submit.disabled = true;
-  elements.answerProgress.textContent = "Select an answer for all three axes.";
+  elements.answerProgress.textContent = "Select all three axes.";
   elements.results.hidden = true;
+  elements.transitionStrip.replaceChildren();
   elements.swatchA.style.backgroundColor = state.round.rgbA.css;
   elements.swatchB.style.backgroundColor = state.round.rgbB.css;
   elements.liveResult.textContent = "";
@@ -289,6 +305,30 @@ function updateScore(correctByAxis) {
 function renderResults(answers, correctByAxis) {
   const correctCount = AXES.filter((axis) => correctByAxis[axis]).length;
   elements.roundSummary.textContent = `${correctCount} of 3 correct.`;
+
+  const transitionColors = [
+    state.round.rgbA,
+    ...state.round.transitionColors,
+    state.round.rgbB,
+  ];
+  const transitionLabels = ["Color A", "25%", "50%", "75%", "Color B"];
+
+  elements.transitionStrip.replaceChildren(
+    ...transitionColors.map((color, index) => {
+      const figure = document.createElement("figure");
+      figure.className = "transition-step";
+
+      const swatch = document.createElement("div");
+      swatch.className = "transition-color";
+      swatch.style.backgroundColor = color.css;
+
+      const caption = document.createElement("figcaption");
+      caption.textContent = transitionLabels[index];
+
+      figure.append(swatch, caption);
+      return figure;
+    }),
+  );
 
   for (const axis of AXES) {
     const fieldset = elements.form.querySelector(`[data-axis="${axis}"]`);
@@ -360,6 +400,12 @@ function submitAnswers(event) {
   renderResults(answers, correctByAxis);
 }
 
+function regenerateForDifficulty() {
+  renderNewRound();
+  elements.liveResult.textContent =
+    "A new round was generated for the updated difficulty.";
+}
+
 /**
  * Randomized development checks. Open the page with ?test=1 to run them.
  * A thrown error indicates an invariant failure; success is logged to console.
@@ -396,7 +442,11 @@ function runGenerationChecks(iterations = 60) {
           }
         }
 
-        for (const rgb of [round.rgbA, round.rgbB]) {
+        for (const rgb of [
+          round.rgbA,
+          ...round.transitionColors,
+          round.rgbB,
+        ]) {
           for (const channel of ["r", "g", "b"]) {
             if (
               !Number.isFinite(rgb[channel]) ||
@@ -423,9 +473,11 @@ function runGenerationChecks(iterations = 60) {
 elements.form.addEventListener("change", updateAnswerProgress);
 elements.form.addEventListener("submit", submitAnswers);
 elements.nextRound.addEventListener("click", renderNewRound);
+elements.maxAxes.addEventListener("change", regenerateForDifficulty);
 elements.minDelta.addEventListener("input", () => {
-  elements.minDeltaOutput.textContent = `${elements.minDelta.value} LAB units`;
+  elements.minDeltaOutput.textContent = `${elements.minDelta.value} units`;
 });
+elements.minDelta.addEventListener("change", regenerateForDifficulty);
 
 renderNewRound();
 
@@ -436,6 +488,7 @@ if (new URLSearchParams(window.location.search).get("test") === "1") {
 window.ColorPerceptionGame = Object.freeze({
   labToSrgb,
   generateRound,
+  interpolateLab,
   directionForDelta,
   runGenerationChecks,
 });

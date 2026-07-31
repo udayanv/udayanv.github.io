@@ -1,0 +1,255 @@
+# Color Perception Trainer — Project Plan
+
+> This is the active design and implementation plan. Preserve `designDoc.md` unchanged as the original reference.
+
+## 1. Project Summary
+
+Color Perception Trainer is a browser-based learning tool for novice painters and beginners with little formal art background. It teaches users to see color as measurable relationships—especially lightness and chroma—rather than relying on broad color names.
+
+The application is a static, browser-only React app. Its initial release is a free-play comparison exercise. Users select a skill, answer one procedural color question at a time, receive a clear explanation, and can continue or leave whenever they choose.
+
+The product must be modular and scalable: new exercises, color models, palettes, and persistence methods should extend defined interfaces rather than require a rewrite.
+
+## 2. Audience and Learning Approach
+
+### Primary audience
+
+Beginners and novice watercolor painters who want to improve visual color judgment but may not know formal color-theory vocabulary.
+
+### Learning principles
+
+1. Teach one perceptual relationship at a time.
+2. Use plain language before formal vocabulary: “lighter” before “lightness,” and “more vivid” before “chroma.”
+3. Give immediate feedback that explains the relationship, not merely whether the answer was correct.
+4. Keep user control high: free play, no required lesson sequence, and no mandatory session length.
+5. Keep pigment interpretation separate from perceptual scoring.
+
+## 3. Initial Release (R1)
+
+### R1 goal
+
+Deliver a polished, reliable free-play experience for comparing colors by **Lightness** or **Chroma**.
+
+### Included
+
+- React, TypeScript, Vite, browser-only deployment suitable for GitHub Pages.
+- A home/exercise-selection screen.
+- Relative Shift: the only playable R1 exercise.
+- Separate selectable practice choices for Lightness and Chroma.
+- Procedurally generated questions with objective answers.
+- Immediate feedback after every answer.
+- An optional, always-available Palette Reference for the six preset primaries.
+- LocalStorage persistence of basic performance separately by skill.
+- Responsive, accessible controls for desktop and mobile.
+
+### Excluded from R1
+
+- Hidden Undertone and Mix a Color exercises (reserved for future releases).
+- Hue and temperature questions.
+- Physical/spectral watercolor simulation.
+- Measured commercial-pigment palettes.
+- Image uploads, accounts, cloud sync, social features, streaks, or notifications.
+- Full adaptive-learning algorithms, confusion maps, reaction-time analytics, and backend services.
+
+### R1 release criteria
+
+R1 is ready to share when a beginner can:
+
+1. Choose Lightness or Chroma without needing prior art vocabulary.
+2. Understand how to answer and receive feedback after one question.
+3. Continue practicing or return to the selector at any time.
+4. Return later and see their locally saved results by skill.
+5. Use the experience with keyboard or touch controls on a typical desktop or mobile browser.
+
+## 4. User Experience
+
+### Home and exercise selection
+
+The home screen presents a simple selector. R1 has one playable card:
+
+- **Relative Shift** — “Compare two colors and spot one clear difference.”
+
+Within that exercise, show two selectable choices:
+
+- **Lightness** — “Which color is lighter?”
+- **Chroma** — “Which color is more vivid?”
+
+Reserve explicit, data-driven positions for future cards:
+
+- **Hidden Undertone** — “Find the color family beneath a muted color.” (R2)
+- **Mix a Color** — “Identify the virtual primary added to make a new color.” (R3)
+
+The future cards may be shown as “Coming soon” if their short descriptions are helpful; otherwise retain them in the exercise registry until playable.
+
+### Free-play loop
+
+1. User selects Relative Shift and a skill.
+2. App shows two color swatches and one direct question.
+3. User selects a swatch as their answer.
+4. App shows correct/incorrect feedback and a short explanation.
+5. User chooses “Next color” or returns to the selector.
+
+There is no fixed question count, required completion, or forced summary. A lightweight summary can be offered on exit.
+
+### Feedback
+
+Feedback must be concise and educational. Examples:
+
+- Lightness: “The left color is lighter. Lightness describes how close a color is to white or black.”
+- Chroma: “The right color is more vivid. Chroma describes how strong or muted a color appears.”
+
+For R1, show the tested dimension and the direction of the difference. Technical OKLCH values may appear in an optional details area, not as the primary explanation.
+
+### Palette Reference
+
+Provide an always-available palette button. It opens a pop-out sheet on small screens and may be a collapsible side panel on large screens. It shows a swatch and label for six virtual learning anchors:
+
+- Cool Yellow
+- Warm Yellow
+- Warm Red
+- Cool Red
+- Warm Blue
+- Cool Blue
+
+State clearly that these are learning anchors, not exact commercial paints or a required physical palette. The reference never reveals answers or affects scoring.
+
+## 5. Color Model and Exercise Rules
+
+### Canonical representation
+
+Store and calculate colors internally only as OKLab:
+
+```ts
+interface ColorSample {
+  L: number;
+  a: number;
+  b: number;
+}
+```
+
+Convert temporarily to OKLCH only when a hue/chroma representation is useful for generation, explanations, or debugging. Do not store both representations.
+
+### Why OKLab
+
+OKLab provides a perceptually oriented Cartesian space. Euclidean distance, interpolation, and bounded changes are straightforward. It also avoids hue-angle wrapping in core calculations.
+
+### Display and gamut policy
+
+The app must render conservatively in sRGB, the common display baseline. Generate candidate colors within a deliberately safe sRGB display range; if conversion produces an out-of-gamut color, reduce chroma while preserving lightness and hue as closely as possible. Reject and regenerate a sample if the remaining visible difference is too small.
+
+This policy prioritizes fair, clear questions across ordinary screens over maximum color saturation. Gamut handling belongs in a dedicated color-rendering module so it can be improved later without changing exercise logic.
+
+### Virtual palette
+
+Define the following six virtual anchors as OKLCH values, convert them once to OKLab during initialization, and retain only the OKLab values for calculations.
+
+| Anchor | L | C | H |
+|---|---:|---:|---:|
+| Cool Yellow | 0.93 | 0.17 | 110° |
+| Warm Yellow | 0.91 | 0.17 | 90° |
+| Warm Red | 0.64 | 0.23 | 30° |
+| Cool Red | 0.62 | 0.24 | 355° |
+| Warm Blue | 0.56 | 0.18 | 285° |
+| Cool Blue | 0.60 | 0.18 | 235° |
+
+### Relative Shift rules
+
+Each R1 question tests exactly one perceptual dimension. Do not combine changes in a single question.
+
+| Skill | Prompt | Generation rule | Recorded skill |
+|---|---|---|---|
+| Lightness | “Which color is lighter?” | Adjust OKLab `L`; retain the same chromatic direction. | `lightness` |
+| Chroma | “Which color is more vivid?” | Adjust OKLCH `C` (the magnitude of the OKLab `a`/`b` vector); retain `L` and hue. | `chroma` |
+
+Use bounded difficulty bands. Easier questions have visibly larger differences; later bands reduce the difference only when it remains clearly discernible after gamut mapping. Randomize left/right answer placement.
+
+## 6. Modular Architecture
+
+```text
+domain/color       OKLab math, conversions, gamut-safe rendering
+domain/palette     Virtual anchor definitions and palette data
+domain/exercises   Exercise definitions, generation, prompts, answer keys, feedback data
+domain/scoring     Answer evaluation and skill-level outcomes
+application        Free-play orchestration and future selection/adaptation policy
+infrastructure     Randomness, LocalStorage, future persistence adapters
+ui                 React components and presentation-only formatting
+```
+
+Dependencies flow inward: UI and infrastructure may depend on domain modules; domain modules must not depend on React, LocalStorage, or browser APIs.
+
+### Core contracts
+
+```ts
+type Skill = 'lightness' | 'chroma' | 'hue' | 'temperature';
+
+interface Exercise<Question, Answer> {
+  id: string;
+  skill: Skill;
+  difficulty: number;
+  question: Question;
+  correctAnswer: Answer;
+  feedback: FeedbackData;
+}
+
+interface ExerciseGenerator {
+  generate(input: GenerationRequest): Exercise<unknown, unknown>;
+}
+
+interface ProgressRepository {
+  load(): ProgressSnapshot;
+  save(snapshot: ProgressSnapshot): void;
+}
+```
+
+Generators create question data and answer keys. Scoring evaluates a submitted answer. UI renders data and dispatches user intent. LocalStorage is one `ProgressRepository` implementation, not a domain dependency.
+
+### Suggested initial implementation order
+
+1. Scaffold the Vite React/TypeScript app and define the domain types.
+2. Build and test OKLab/OKLCH conversion, sRGB gamut mapping, and color serialization.
+3. Implement Relative Shift generators for Lightness and Chroma, including deterministic seeded randomness for development/testing.
+4. Implement answer evaluation, feedback data, and aggregate progress by skill.
+5. Build the selector, free-play question view, feedback view, and palette pop-out.
+6. Add LocalStorage persistence, keyboard navigation, touch-friendly controls, and responsive styling.
+7. Test edge cases: gamut, random answer placement, persistence failure, keyboard-only use, narrow screens, and clear distinction at every R1 difficulty band.
+
+## 7. Future Releases
+
+| Release | Purpose | Scope | Exit condition |
+|---|---|---|---|
+| R1 | Establish reliable beginner practice | Relative Shift: Lightness and Chroma, free play, feedback, palette reference, local progress | Meets the R1 release criteria. |
+| R1.1 | Learning polish | Difficulty bands, clearer explanations, basic weak-skill weighting, accessibility refinement | Learners can find and repeat weak areas easily. |
+| R2: Hidden Undertone | Teach color-family bias beneath muted colors | Define a reproducible muted-color range; dominant-family and warm/cool prompts; optional interpretation feedback | Interpretations are explanatory only and never define scoring. |
+| R3: Mix a Color | Teach perceptual transformation | Source/result questions generated by adding a known virtual anchor at a known ratio | Uses existing exercise, scoring, and feedback contracts. |
+| R4 | Improve realism and palette options | Measured pigment data, multiple virtual palettes, replaceable physical/spectral mixing adapter | New palette/model adapters do not alter the perceptual core. |
+| R5 | Expand learning sources | Image sampling, richer history, optional sync/backend | Additional inputs use the same color and exercise domain contracts. |
+
+### R2: Hidden Undertone
+
+Show a deliberately muted color. Ask the user to identify the dominant primary family and then warm/cool lean. Define the muted generation range and the operational scoring definition before implementation; “warm” and “cool” are contextual and cannot be assessed casually. Nearest-pigment results, if shown, are interpretations—not perceptual truth.
+
+### R3: Mix a Color
+
+Show a source color and a result created by adding a known proportion of one virtual anchor using the current perceptual interpolation model. Ask which anchor was added. Start with large, clear mix ratios and lower them gradually. Keep the mix model behind an interface so it can later be replaced by a physical watercolor model.
+
+## 8. Non-goals and Risks
+
+### Non-goals for the perceptual core
+
+- It is not a physically accurate watercolor simulator.
+- It does not claim virtual anchors correspond exactly to named commercial pigments.
+- It does not treat warm/cool interpretation as a substitute for measurable color relationships.
+
+### Risks to manage
+
+- Displays and browsers differ. Use conservative sRGB rendering and sufficiently large R1 differences.
+- Beginner terminology can overwhelm learners. Keep formal terms contextual and optional.
+- Pigment explanations can overstate certainty. Label them as estimates whenever introduced.
+
+## 9. Change Log
+
+- 2026-07-31 — Created the active project plan; preserved `designDoc.md` as the unchanged reference.
+- 2026-07-31 — Set the primary audience to beginners and added the six-primary Palette Reference.
+- 2026-07-31 — Selected free play and a modular exercise-selection screen.
+- 2026-07-31 — Locked R1 to Relative Shift, reserving Hidden Undertone (R2) and Mix a Color (R3).
+- 2026-07-31 — Set Lightness and Chroma as separate R1 choices with independent generation and progress tracking.

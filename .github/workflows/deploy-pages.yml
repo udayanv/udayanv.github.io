@@ -63,7 +63,8 @@ jobs:
 
       - name: Add compiled color game to site
         run: |
-          sudo rm -rf _site/widgets/color-game-v2
+          sudo chown -R "$(id -u):$(id -g)" _site
+          rm -rf _site/widgets/color-game-v2
           mkdir -p _site/widgets/color-game-v2
           cp -R "$RUNNER_TEMP/color-game-v2/." _site/widgets/color-game-v2/
 

@@ -90,7 +90,7 @@ function PaletteReference({ open, onClose, returnFocus }: {
           </div>
           <button className="icon-button" onClick={onClose} autoFocus aria-label="Close palette reference">×</button>
         </div>
-        <p className="palette-note">Six learning anchors for comparing color families—not exact commercial paints or a required physical palette.</p>
+        <p className="palette-note">Screen references for the six DANIEL SMITH Essentials colors, based on published color measurements. Water, paper, lighting, and displays will change their appearance.</p>
         <div className="palette-grid">
           {paletteDisplay.map((anchor) => (
             <div className="palette-item" key={anchor.id}>

@@ -110,16 +110,16 @@ For R1, show the tested dimension and the direction of the difference. Technical
 
 ### Palette Reference
 
-Provide an always-available palette button. It opens a pop-out sheet on small screens and may be a collapsible side panel on large screens. It shows a swatch and label for six virtual learning anchors:
+Provide an always-available palette button. It opens a pop-out sheet on small screens and may be a collapsible side panel on large screens. It shows a screen-reference swatch and label for the six colors in the DANIEL SMITH Essentials Watercolor Set:
 
-- Cool Yellow
-- Warm Yellow
-- Cool Red
-- Warm Red
-- Cool Blue
-- Warm Blue
+- Hansa Yellow Light (cool yellow)
+- New Gamboge (warm yellow)
+- Quinacridone Rose (cool red)
+- Pyrrol Scarlet (warm red)
+- Phthalo Blue, Green Shade (cool blue)
+- French Ultramarine Blue (warm blue)
 
-State clearly that these are learning anchors, not exact commercial paints or a required physical palette. The reference never reveals answers or affects scoring.
+State clearly that these are conservative screen approximations derived from the manufacturer's published CIE Lab measurements, not color-managed reproductions of watercolor on paper. Dilution, paper, lighting, and display conditions change appearance. The reference never reveals answers or affects scoring.
 
 ## 5. Color Model and Exercise Rules
 
@@ -153,12 +153,12 @@ Define the following six virtual anchors as OKLCH values, convert them once to O
 
 | Anchor | L | C | H |
 |---|---:|---:|---:|
-| Cool Yellow | 0.93 | 0.17 | 110° |
-| Warm Yellow | 0.91 | 0.17 | 90° |
-| Cool Red | 0.62 | 0.24 | 355° |
-| Warm Red | 0.64 | 0.23 | 30° |
-| Cool Blue | 0.60 | 0.18 | 235° |
-| Warm Blue | 0.56 | 0.18 | 285° |
+| Hansa Yellow Light | 0.92121 | 0.19657 | 107.37734° |
+| New Gamboge | 0.86354 | 0.16515 | 88.08280° |
+| Quinacridone Rose | 0.68129 | 0.15715 | 356.65572° |
+| Pyrrol Scarlet | 0.60269 | 0.19750 | 28.88184° |
+| Phthalo Blue (Green Shade) | 0.57809 | 0.12321 | 235.33881° |
+| French Ultramarine Blue | 0.59035 | 0.16458 | 262.41026° |
 
 ### Relative Shift rules
 

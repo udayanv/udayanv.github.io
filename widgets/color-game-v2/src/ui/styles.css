@@ -141,7 +141,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 
 .palette-layer { position: fixed; inset: 0; z-index: 10; display: flex; justify-content: flex-end; }
 .palette-backdrop { position: absolute; inset: 0; border: 0; background: rgba(28,29,25,.35); backdrop-filter: blur(2px); cursor: default; }
-.palette-panel { position: relative; width: min(390px, 100%); height: 100%; padding: 34px; border: 0; background: #faf8f2; box-shadow: -10px 0 40px rgba(35,32,24,.16); animation: slide-in .22s ease-out; }
+.palette-panel { position: relative; width: min(390px, 100%); height: 100%; overflow-y: auto; padding: 34px; border: 0; background: #faf8f2; box-shadow: -10px 0 40px rgba(35,32,24,.16); animation: slide-in .22s ease-out; }
 @keyframes slide-in { from { transform: translateX(100%); } }
 .palette-heading { display: flex; justify-content: space-between; align-items: start; gap: 20px; }
 .palette-heading h2 { margin-bottom: 0; font: 600 34px 'Newsreader', Georgia, serif; }

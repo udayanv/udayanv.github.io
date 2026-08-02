@@ -69,7 +69,7 @@ export class HiddenUndertoneGenerator implements ExerciseGenerator<
       feedback: {
         anchorId: anchor.id,
         anchorName: anchor.name,
-        explanation: 'This answer follows the direction of the app’s defined learning anchor, not an exact commercial paint.',
+        explanation: 'This answer follows the app’s screen reference for the named paint. Real watercolor appearance varies with water, paper, and lighting.',
       },
     }
   }

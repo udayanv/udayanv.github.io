@@ -91,6 +91,14 @@ The future cards may be shown as “Coming soon” if their short descriptions a
 
 There is no fixed question count, required completion, or forced summary. A lightweight summary can be offered on exit.
 
+### Difficulty controls
+
+Every playable exercise exposes four choices: **Auto**, **Easy**, **Medium**, and **Hard**. Auto is the beginner-friendly default and selects a bounded difficulty band from the learner's progress in that exercise. A manual choice overrides Auto until the learner changes it; changing difficulty affects the next question, never the question already on screen.
+
+Difficulty is an exercise-specific policy rather than a single global numeric delta. Each policy must define measurable generation ranges and validate the final display-safe question. Hard means a smaller but still clearly discernible difference, not an intentionally ambiguous or trick question. The UI presents the choices as an accessible radio group with arrow-key support and touch targets of at least 44 by 44 CSS pixels.
+
+Progress records the difficulty actually played and retains an overall total plus per-band totals. The stored preference may be shared across sessions, but performance for one exercise must not automatically raise the difficulty of a different exercise.
+
 ### Feedback
 
 Feedback must be concise and educational. Examples:
@@ -106,10 +114,10 @@ Provide an always-available palette button. It opens a pop-out sheet on small sc
 
 - Cool Yellow
 - Warm Yellow
-- Warm Red
 - Cool Red
-- Warm Blue
+- Warm Red
 - Cool Blue
+- Warm Blue
 
 State clearly that these are learning anchors, not exact commercial paints or a required physical palette. The reference never reveals answers or affects scoring.
 
@@ -147,10 +155,10 @@ Define the following six virtual anchors as OKLCH values, convert them once to O
 |---|---:|---:|---:|
 | Cool Yellow | 0.93 | 0.17 | 110° |
 | Warm Yellow | 0.91 | 0.17 | 90° |
-| Warm Red | 0.64 | 0.23 | 30° |
 | Cool Red | 0.62 | 0.24 | 355° |
-| Warm Blue | 0.56 | 0.18 | 285° |
+| Warm Red | 0.64 | 0.23 | 30° |
 | Cool Blue | 0.60 | 0.18 | 235° |
+| Warm Blue | 0.56 | 0.18 | 285° |
 
 ### Relative Shift rules
 
@@ -162,6 +170,16 @@ Each R1 question tests exactly one perceptual dimension. Do not combine changes 
 | Chroma | “Which color is more vivid?” | Adjust OKLCH `C` (the magnitude of the OKLab `a`/`b` vector); retain `L` and hue. | `chroma` |
 
 Use bounded difficulty bands. Easier questions have visibly larger differences; later bands reduce the difference only when it remains clearly discernible after gamut mapping. Randomize left/right answer placement.
+
+The shared difficulty choices map to the existing Relative Shift bands as follows:
+
+| Band | Lightness difference | Chroma difference |
+|---|---:|---:|
+| Easy | 0.140 | 0.080 |
+| Medium | 0.100 | 0.060 |
+| Hard | 0.075 | 0.045 |
+
+Auto begins at Easy, may move to Medium after at least 5 attempts with at least 60% correct, and may move to Hard after at least 15 attempts with at least 70% correct. These thresholds are evaluated separately for Lightness and Chroma. Manual selection bypasses advancement rules but never bypasses gamut or minimum-distinction validation.
 
 ## 6. Modular Architecture
 
@@ -213,6 +231,34 @@ Generators create question data and answer keys. Scoring evaluates a submitted a
 6. Add LocalStorage persistence, keyboard navigation, touch-friendly controls, and responsive styling.
 7. Test edge cases: gamut, random answer placement, persistence failure, keyboard-only use, narrow screens, and clear distinction at every R1 difficulty band.
 
+### Architecture plan before R2 and R3
+
+The next exercises should be added only after the shared exercise boundaries are made genuinely reusable. Changes that affect dependency direction, orchestration, generator fairness, or the common exercise contract become more expensive once multiple exercise implementations depend on the current R1 shape.
+
+| Timing | Improvement | Reason |
+|---|---|---|
+| Before R2 or R3 | Move `RandomSource` and `ProgressRepository` contracts to domain/application ports; keep browser randomness and LocalStorage implementations in infrastructure. | Prevents new domain generators and application services from depending outward on infrastructure. |
+| Before R2 or R3 | Extract a framework-independent free-play session service or reducer from React. | Gives every exercise the same lifecycle for question creation, answer submission, feedback, progress updates, and moving to the next question. |
+| Before R2 or R3 | Generalize the exercise-generator and answer contracts without erasing their question and answer types. | Hidden Undertone and Mix a Color require different question data and answer choices from Relative Shift. |
+| Before R2 or R3 | Add post-gamut question validation with per-exercise minimum-difference policies, bounded regeneration attempts, and explicit failure handling. | Every exercise must remain objectively fair after display conversion rather than merely at its initially generated values. |
+| Before R2 or R3 | Add unit tests for shared ports, session transitions, generator invariants, palette order, and every existing difficulty band. | Locks in R1 behavior before shared code is reused and extended. |
+| During each exercise | Define its operational scoring rules, generation range, feedback vocabulary, and progress category before building its UI. | Keeps interpretations separate from measurable answer keys and avoids UI-driven domain rules. |
+| After R2/R3 domain foundations | Split the current React file into screen components and reusable presentation components. | This improves maintainability but does not determine domain correctness; perform the split before adding substantial exercise-specific UI. |
+| After exercise integration, before release | Complete dialog focus trapping/restoration, background inertness, scroll locking, and keyboard interaction tests. | These are release-quality accessibility requirements but do not need to block early domain work. |
+| After exercise integration, before release | Add end-to-end coverage for exercise selection, persistence, keyboard-only play, and narrow-screen layouts. | End-to-end tests are most useful once the new user flows have stabilized. |
+
+#### Sequenced next steps
+
+1. Restore a reproducible local toolchain and run the current R1 tests and production build to establish a clean baseline.
+2. Introduce inward-facing ports for randomness and progress persistence, then update the existing adapters without changing behavior.
+3. Extract and unit-test the free-play session lifecycle from React.
+4. Generalize the exercise registration, generation, answer, feedback, difficulty-policy, and progress contracts while retaining compile-time types for each exercise; add the shared Auto/Easy/Medium/Hard control and persist the selected mode.
+5. Implement a reusable validation pipeline that evaluates final display-safe colors, retries invalid questions up to a fixed limit, and reports generation failure safely.
+6. Expand R1 tests to cover all difficulty bands, minimum visible differences, randomized answer placement, palette ordering, and session transitions.
+7. Specify and implement R2 Hidden Undertone against the shared contracts; keep contextual interpretation outside objective scoring.
+8. Specify a replaceable mixing-model interface and implement R3 Mix a Color against the same session, scoring, and persistence boundaries.
+9. Split exercise-specific React screens from shared controls, then complete accessibility and end-to-end validation before either exercise is released.
+
 ## 7. Future Releases
 
 | Release | Purpose | Scope | Exit condition |
@@ -228,9 +274,38 @@ Generators create question data and answer keys. Scoring evaluates a submitted a
 
 Show a deliberately muted color. Ask the user to identify the dominant primary family and then warm/cool lean. Define the muted generation range and the operational scoring definition before implementation; “warm” and “cool” are contextual and cannot be assessed casually. Nearest-pigment results, if shown, are interpretations—not perceptual truth.
 
+#### Operational definition of neutral
+
+The mathematical neutral axis is OKLab `a = 0` and `b = 0`, equivalent to OKLCH `C = 0`. For display and scoring, R2 uses the following explicit terms after gamut mapping:
+
+- **Operationally neutral:** `C <= 0.015`. Hue is treated as undefined and no undertone answer is scored.
+- **Muted or near-neutral:** `C > 0.015`, with chroma low enough to fall inside the exercise ranges below. Hue remains defined by the generated OKLab `a`/`b` direction.
+
+R2 questions are generated by starting at a neutral gray of the target lightness and moving along the OKLab chromatic direction of exactly one virtual anchor. The anchor used by generation is the objective answer. R2 does not infer perceptual truth from the nearest named pigment, and it does not include trick "neutral" answers in the initial release. Samples at or below the operational-neutral threshold are rejected and regenerated.
+
+To keep difficulty comparable across lightnesses and hues, use normalized chroma `r = C / Cmax(L, h)`, where `Cmax` is the maximum display-safe sRGB chroma at the generated lightness and hue. Initial R2 bands are:
+
+| Band | Normalized chroma `r` | Additional rule |
+|---|---:|---|
+| Easy | 0.30-0.40 | Strongly muted but readily identifiable. |
+| Medium | 0.20-0.30 | Quieter undertone with the same two-stage family and warm/cool answer. |
+| Hard | 0.12-0.20 | Must still have final `C >= 0.025` and pass display-distinction validation. |
+
+All bands use the same two-stage task: identify Yellow, Red, or Blue, then identify the warm or cool anchor within that family. Feedback names the generated anchor and explains that the answer follows the app's defined learning anchors. Future neutral-detection questions, if added, must be a separate question type with their own scoring and calibration.
+
 ### R3: Mix a Color
 
 Show a source color and a result created by adding a known proportion of one virtual anchor using the current perceptual interpolation model. Ask which anchor was added. Start with large, clear mix ratios and lower them gradually. Keep the mix model behind an interface so it can later be replaced by a physical watercolor model.
+
+R3 difficulty controls both the added-anchor proportion and the similarity of the answer choices:
+
+| Band | Added-anchor proportion | Answer choices |
+|---|---:|---|
+| Easy | 0.35-0.45 | Three choices drawn from different primary families. |
+| Medium | 0.22-0.35 | Six virtual anchors, with clearly separated generated results. |
+| Hard | 0.12-0.22 | Six virtual anchors including the paired warm/cool distractor; reject ambiguous results. |
+
+The final source/result pair and every distractor prediction must be evaluated after gamut mapping. A question is regenerated when the intended result is below the minimum visible change from the source or insufficiently separated from a distractor. Auto may advance only through bands that have passed these checks.
 
 ## 8. Non-goals and Risks
 
@@ -248,6 +323,9 @@ Show a source color and a result created by adding a known proportion of one vir
 
 ## 9. Change Log
 
+- 2026-08-01 — Defined operational neutrality and initial R2/R3 difficulty bands; added shared Auto/Easy/Medium/Hard controls and progress requirements.
+- 2026-08-01 — Added a sequenced architecture plan separating prerequisites for R2/R3 from improvements that can follow exercise-domain work.
+- 2026-08-01 — Standardized Palette Reference ordering so each color family is shown cool first, then warm.
 - 2026-07-31 — Created the active project plan; preserved `designDoc.md` as the unchanged reference.
 - 2026-07-31 — Set the primary audience to beginners and added the six-primary Palette Reference.
 - 2026-07-31 — Selected free play and a modular exercise-selection screen.

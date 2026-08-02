@@ -49,10 +49,11 @@ export function submitSessionAnswer<Question, Answer, Feedback, Progress>(
     exercise: Exercise<Question, Answer, Feedback>,
     isCorrect: boolean,
   ) => Progress,
+  evaluate: (selected: Answer, correct: Answer) => boolean = Object.is,
 ): { session: FreePlaySession<Question, Answer, Feedback>; progress: Progress } {
   if (session.phase !== 'question') return { session, progress }
 
-  const isCorrect = Object.is(selected, session.exercise.correctAnswer)
+  const isCorrect = evaluate(selected, session.exercise.correctAnswer)
   return {
     session: {
       phase: 'feedback',

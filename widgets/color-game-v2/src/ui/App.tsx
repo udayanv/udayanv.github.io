@@ -1,24 +1,41 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { recordAnswer, setDifficultyMode, type ProgressSnapshot } from '../application/progress'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { recordAnswer, recordHiddenUndertoneAnswer, setDifficultyMode, setHiddenUndertoneDifficultyMode, type ProgressSnapshot } from '../application/progress'
 import { exerciseRegistry } from '../application/exerciseRegistry'
 import { relativeShiftDifficultyPolicy } from '../application/relativeShiftDifficulty'
+import { hiddenUndertoneDifficultyPolicy } from '../application/hiddenUndertoneDifficulty'
 import { nextSessionQuestion, startSession, submitSessionAnswer, type FreePlaySession } from '../application/freePlaySession'
-import { toDisplayColor } from '../domain/color/conversion'
+import { maxSrgbChroma, oklabToOklch, toDisplayColor } from '../domain/color/conversion'
 import { RelativeShiftGenerator, skillLabel } from '../domain/exercises/relativeShift'
-import type { DifficultyMode, RelativeShiftFeedbackData, RelativeShiftQuestion, R1Skill, SwatchSide } from '../domain/exercises/types'
+import { HiddenUndertoneGenerator } from '../domain/exercises/hiddenUndertone'
+import type { DifficultyMode, HiddenUndertoneAnswer, HiddenUndertoneFeedbackData, HiddenUndertoneQuestion, RelativeShiftFeedbackData, RelativeShiftQuestion, R1Skill, SwatchSide } from '../domain/exercises/types'
+import { evaluateHiddenUndertoneAnswer } from '../domain/scoring/hiddenUndertoneScoring'
+import type { ColorLean, PrimaryFamily } from '../domain/palette/palette'
 import { paletteDisplay } from '../domain/palette/palette'
 import { BrowserRandom } from '../infrastructure/random'
 import { LocalStorageProgressRepository } from '../infrastructure/progressRepository'
 
 type ActiveSession = FreePlaySession<RelativeShiftQuestion, SwatchSide, RelativeShiftFeedbackData>
+type HiddenSession = FreePlaySession<HiddenUndertoneQuestion, HiddenUndertoneAnswer, HiddenUndertoneFeedbackData>
+type ActivePractice = { id: 'relative-shift'; skill: R1Skill } | { id: 'hidden-undertone' }
 
 const generator = new RelativeShiftGenerator(new BrowserRandom())
+const hiddenUndertoneGenerator = new HiddenUndertoneGenerator(new BrowserRandom())
 const repository = new LocalStorageProgressRepository(window.localStorage)
 
 function ProgressLine({ progress }: { progress: { attempted: number; correct: number } }) {
   if (progress.attempted === 0) return <span>Ready to begin</span>
   const percent = Math.round((progress.correct / progress.attempted) * 100)
   return <span>{progress.correct} of {progress.attempted} correct · {percent}%</span>
+}
+
+function HiddenProgressSummary({ progress }: { progress: ProgressSnapshot['hiddenUndertone'] }) {
+  if (progress.overall.attempted === 0) return <span>Ready to begin</span>
+  return (
+    <span className="hidden-progress-summary">
+      <ProgressLine progress={progress.overall} />
+      <small>Family {progress.family.correct}/{progress.family.attempted} · Lean {progress.lean.correct}/{progress.lean.attempted}</small>
+    </span>
+  )
 }
 
 function PaletteReference({ open, onClose, returnFocus }: {
@@ -87,7 +104,11 @@ function PaletteReference({ open, onClose, returnFocus }: {
   )
 }
 
-function Home({ progress, onStart }: { progress: ProgressSnapshot; onStart: (skill: R1Skill) => void }) {
+function Home({ progress, onStartRelative, onStartHidden }: {
+  progress: ProgressSnapshot
+  onStartRelative: (skill: R1Skill) => void
+  onStartHidden: () => void
+}) {
   const current = exerciseRegistry[0]
   return (
     <main className="home shell">
@@ -119,12 +140,12 @@ function Home({ progress, onStart }: { progress: ProgressSnapshot; onStart: (ski
             <p>{current.description}</p>
           </div>
           <div className="skill-choices">
-            <button className="skill-choice" onClick={() => onStart('lightness')}>
+            <button className="skill-choice" onClick={() => onStartRelative('lightness')}>
               <span className="choice-sample lightness-sample" aria-hidden="true"><i /><i /></span>
               <span className="choice-copy"><strong>Lightness</strong><small>Which color is lighter?</small><ProgressLine progress={progress.skills.lightness} /></span>
               <span className="arrow" aria-hidden="true">↗</span>
             </button>
-            <button className="skill-choice" onClick={() => onStart('chroma')}>
+            <button className="skill-choice" onClick={() => onStartRelative('chroma')}>
               <span className="choice-sample chroma-sample" aria-hidden="true"><i /><i /></span>
               <span className="choice-copy"><strong>Chroma</strong><small>Which color is more vivid?</small><ProgressLine progress={progress.skills.chroma} /></span>
               <span className="arrow" aria-hidden="true">↗</span>
@@ -132,14 +153,22 @@ function Home({ progress, onStart }: { progress: ProgressSnapshot; onStart: (ski
           </div>
         </article>
 
-        <div className="future-grid" aria-label="Future exercises">
+        <div className="future-grid" aria-label="More exercises">
           {exerciseRegistry.slice(1).map((exercise, index) => (
-            <article className="exercise-card future" key={exercise.id}>
+            <article className={`exercise-card future ${exercise.playable ? 'playable' : ''}`} key={exercise.id}>
               <div className="card-index">0{index + 2}</div>
               <div className="card-copy">
-                <span className="status">Coming in {exercise.release}</span>
+                <span className={`status ${exercise.playable ? 'available' : ''}`}>
+                  {exercise.playable ? exercise.release : `Coming in ${exercise.release}`}
+                </span>
                 <h3>{exercise.title}</h3>
                 <p>{exercise.description}</p>
+                {exercise.id === 'hidden-undertone' && (
+                  <button className="future-start" onClick={onStartHidden}>
+                    <span>Practice Hidden Undertone</span>
+                    <HiddenProgressSummary progress={progress.hiddenUndertone} />
+                  </button>
+                )}
               </div>
             </article>
           ))}
@@ -149,7 +178,45 @@ function Home({ progress, onStart }: { progress: ProgressSnapshot; onStart: (ski
   )
 }
 
-function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: {
+function DifficultyControl({ mode, onChange }: {
+  mode: DifficultyMode
+  onChange: (mode: DifficultyMode) => void
+}) {
+  const choices = ['auto', 'easy', 'medium', 'hard'] as const
+
+  const moveWithArrow = (event: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+    const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+    if (!forward && !backward) return
+    event.preventDefault()
+    const nextIndex = (index + (forward ? 1 : -1) + choices.length) % choices.length
+    onChange(choices[nextIndex])
+    const inputs = event.currentTarget.closest('fieldset')?.querySelectorAll<HTMLInputElement>('input[type="radio"]')
+    inputs?.[nextIndex]?.focus()
+  }
+
+  return (
+    <fieldset className="difficulty-control">
+      <legend>Difficulty</legend>
+      {choices.map((choice, index) => (
+        <label key={choice}>
+          <input
+            type="radio"
+            name="difficulty"
+            value={choice}
+            checked={mode === choice}
+            onChange={() => onChange(choice)}
+            onKeyDown={(event) => moveWithArrow(event, index)}
+          />
+          <span>{choice[0].toUpperCase() + choice.slice(1)}</span>
+        </label>
+      ))}
+      <small>Changes apply to the next color.</small>
+    </fieldset>
+  )
+}
+
+function RelativeShiftPractice({ skill, progress, onProgress, onExit, paletteOpen = false }: {
   skill: R1Skill
   progress: ProgressSnapshot
   onProgress: (progress: ProgressSnapshot) => void
@@ -193,11 +260,11 @@ function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (paletteOpen) return
-      if (event.key === '1' || event.key === 'ArrowLeft') {
+      if (event.key === '1') {
         event.preventDefault()
         answer('left')
       }
-      if (event.key === '2' || event.key === 'ArrowRight') {
+      if (event.key === '2') {
         event.preventDefault()
         answer('right')
       }
@@ -227,8 +294,8 @@ function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: 
   const { exercise } = session
   const outcome = session.phase === 'feedback' ? session.outcome : null
 
-  const leftCss = useMemo(() => toDisplayColor(exercise.question.left).css, [exercise])
-  const rightCss = useMemo(() => toDisplayColor(exercise.question.right).css, [exercise])
+  const leftCss = toDisplayColor(exercise.question.left).css
+  const rightCss = toDisplayColor(exercise.question.right).css
   const sideName = exercise.correctAnswer === 'left' ? 'left' : 'right'
 
   return (
@@ -239,22 +306,7 @@ function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: 
       </div>
 
       <section className="question-area" aria-labelledby="question-title">
-        <fieldset className="difficulty-control">
-          <legend>Difficulty</legend>
-          {(['auto', 'easy', 'medium', 'hard'] as const).map((mode) => (
-            <label key={mode}>
-              <input
-                type="radio"
-                name="difficulty"
-                value={mode}
-                checked={progress.difficultyMode[skill] === mode}
-                onChange={() => changeDifficulty(mode)}
-              />
-              <span>{mode[0].toUpperCase() + mode.slice(1)}</span>
-            </label>
-          ))}
-          <small>Changes apply to the next color.</small>
-        </fieldset>
+        <DifficultyControl mode={progress.difficultyMode[skill]} onChange={changeDifficulty} />
         <div className="question-heading">
           <p className="eyebrow">Relative shift · {skillLabel(skill)} · {exercise.difficulty}</p>
           <h1 id="question-title">{exercise.question.prompt}</h1>
@@ -302,9 +354,178 @@ function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: 
   )
 }
 
+const familyLabels: Record<PrimaryFamily, string> = {
+  yellow: 'Yellow',
+  red: 'Red',
+  blue: 'Blue',
+}
+
+const leanLabels: Record<ColorLean, string> = {
+  cool: 'Cool',
+  warm: 'Warm',
+}
+
+function HiddenUndertonePractice({ progress, onProgress, onExit, paletteOpen = false }: {
+  progress: ProgressSnapshot
+  onProgress: (progress: ProgressSnapshot) => void
+  onExit: () => void
+  paletteOpen?: boolean
+}) {
+  const makeQuestion = useCallback(() => hiddenUndertoneGenerator.generate({
+    difficulty: hiddenUndertoneDifficultyPolicy.resolve(
+      progress.hiddenUndertone.difficultyMode,
+      progress.hiddenUndertone.overall,
+    ),
+  }), [progress])
+  const [session, setSession] = useState<HiddenSession>(() => startSession(makeQuestion))
+  const [selectedFamily, setSelectedFamily] = useState<PrimaryFamily | null>(null)
+
+  const answerLean = useCallback((lean: ColorLean) => {
+    if (!selectedFamily) return
+    const selected: HiddenUndertoneAnswer = { family: selectedFamily, lean }
+    const result = submitSessionAnswer(
+      session,
+      selected,
+      progress,
+      (snapshot, exercise) => recordHiddenUndertoneAnswer(
+        snapshot,
+        exercise.difficulty,
+        evaluateHiddenUndertoneAnswer(selected, exercise.correctAnswer),
+      ),
+      (answer, correct) => evaluateHiddenUndertoneAnswer(answer, correct).isCorrect,
+    )
+    if (result.session === session) return
+    setSession(result.session)
+    onProgress(result.progress)
+  }, [onProgress, progress, selectedFamily, session])
+
+  const next = useCallback(() => {
+    setSelectedFamily(null)
+    setSession((current) => nextSessionQuestion(current, makeQuestion))
+  }, [makeQuestion])
+
+  const changeDifficulty = useCallback((mode: DifficultyMode) => {
+    onProgress(setHiddenUndertoneDifficultyMode(progress, mode))
+  }, [onProgress, progress])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (paletteOpen) return
+      if (session.phase === 'question' && !selectedFamily) {
+        const family = ({ '1': 'yellow', '2': 'red', '3': 'blue' } as const)[event.key as '1']
+        if (family) {
+          event.preventDefault()
+          setSelectedFamily(family)
+        }
+      } else if (session.phase === 'question' && selectedFamily) {
+        if (event.key === '1') answerLean('cool')
+        if (event.key === '2') answerLean('warm')
+      }
+      if (event.key.toLowerCase() === 'n' && session.phase === 'feedback') next()
+      if (event.key === 'Escape') onExit()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [answerLean, next, onExit, paletteOpen, selectedFamily, session.phase])
+
+  if (session.phase === 'generation-error') {
+    return (
+      <main className="practice shell">
+        <div className="practice-topbar"><button className="text-button" onClick={onExit}>← All exercises</button></div>
+        <section className="generation-error" role="alert">
+          <p className="eyebrow">Question unavailable</p>
+          <h1>Let’s try another color.</h1>
+          <p>{session.message} Your progress has not changed.</p>
+          <button className="primary-button" onClick={next}>Try again</button>
+        </section>
+      </main>
+    )
+  }
+
+  const { exercise } = session
+  const outcome = session.phase === 'feedback' ? session.outcome : null
+  const stageOutcome = outcome
+    ? evaluateHiddenUndertoneAnswer(outcome.selected, outcome.correctAnswer)
+    : null
+  const displayColor = toDisplayColor(exercise.question.color)
+  const lch = oklabToOklch(displayColor.sample)
+  const normalizedChroma = lch.C / maxSrgbChroma(lch.L, lch.h)
+
+  return (
+    <main className="practice hidden-practice shell">
+      <div className="practice-topbar">
+        <button className="text-button" onClick={onExit}>← All exercises</button>
+        <div className="session-progress"><span>Hidden Undertone</span><ProgressLine progress={progress.hiddenUndertone.overall} /></div>
+      </div>
+
+      <section className="question-area" aria-labelledby="question-title">
+        <DifficultyControl mode={progress.hiddenUndertone.difficultyMode} onChange={changeDifficulty} />
+        <div className="question-heading">
+          <p className="eyebrow">Hidden undertone · {exercise.difficulty} · {outcome ? 'Complete' : `Step ${selectedFamily ? '2' : '1'} of 2`}</p>
+          <h1 id="question-title">{exercise.question.prompt}</h1>
+          <p>Start with the broad color family. Then notice whether it leans cool or warm.</p>
+        </div>
+
+        <div className="undertone-sample" style={{ background: displayColor.css }} aria-label="Muted color sample" />
+
+        {!outcome && !selectedFamily && (
+          <fieldset className="undertone-choices">
+            <legend>First, choose the color family</legend>
+            {(Object.keys(familyLabels) as PrimaryFamily[]).map((family, index) => (
+              <button key={family} onClick={() => setSelectedFamily(family)}>
+                <kbd>{index + 1}</kbd><strong>{familyLabels[family]}</strong>
+              </button>
+            ))}
+          </fieldset>
+        )}
+
+        {!outcome && selectedFamily && (
+          <fieldset className="undertone-choices lean-choices">
+            <legend>Now, which way does the {familyLabels[selectedFamily].toLowerCase()} lean?</legend>
+            {(Object.keys(leanLabels) as ColorLean[]).map((lean, index) => (
+              <button key={lean} onClick={() => answerLean(lean)}>
+                <kbd>{index + 1}</kbd><strong>{leanLabels[lean]}</strong>
+              </button>
+            ))}
+            <button className="stage-back" onClick={() => setSelectedFamily(null)}>← Change family</button>
+          </fieldset>
+        )}
+
+        <div className="feedback-slot" aria-live="polite">
+          {outcome && stageOutcome ? (
+            <div className={`feedback undertone-feedback ${stageOutcome.isCorrect ? 'positive' : 'gentle'}`}>
+              <div>
+                <p className="feedback-result">{stageOutcome.isCorrect ? 'Yes—that’s the anchor.' : `This one follows ${exercise.feedback.anchorName}.`}</p>
+                <div className="stage-results">
+                  <span className={stageOutcome.familyCorrect ? 'stage-correct' : 'stage-wrong'}>
+                    Family: {familyLabels[outcome.selected.family]} {stageOutcome.familyCorrect ? '✓' : `→ ${familyLabels[outcome.correctAnswer.family]}`}
+                  </span>
+                  <span className={stageOutcome.leanCorrect ? 'stage-correct' : 'stage-wrong'}>
+                    Lean: {leanLabels[outcome.selected.lean]} {stageOutcome.leanCorrect ? '✓' : `→ ${leanLabels[outcome.correctAnswer.lean]}`}
+                  </span>
+                </div>
+                <p><strong>{exercise.feedback.anchorName}</strong> is the defined answer. {exercise.feedback.explanation}</p>
+                <details>
+                  <summary>See the measured color</summary>
+                  <p>Chroma: {lch.C.toFixed(3)} · normalized chroma: {normalizedChroma.toFixed(3)}</p>
+                </details>
+              </div>
+              <button className="primary-button" onClick={next}>Next color <span aria-hidden="true">→</span></button>
+            </div>
+          ) : !selectedFamily ? (
+            <p className="keyboard-hint">Choose a family, or press <kbd>1</kbd>, <kbd>2</kbd>, or <kbd>3</kbd>.</p>
+          ) : (
+            <p className="keyboard-hint">Choose a lean, or press <kbd>1</kbd> / <kbd>2</kbd>.</p>
+          )}
+        </div>
+      </section>
+    </main>
+  )
+}
+
 export function App() {
   const [progress, setProgress] = useState(() => repository.load())
-  const [skill, setSkill] = useState<R1Skill | null>(null)
+  const [activePractice, setActivePractice] = useState<ActivePractice | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const paletteReturnFocus = useRef<HTMLElement | null>(null)
 
@@ -319,6 +540,10 @@ export function App() {
     setProgress(next)
     repository.save(next)
   }, [])
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [activePractice])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -336,7 +561,7 @@ export function App() {
     <>
       <div className="app-content" inert={paletteOpen ? true : undefined} aria-hidden={paletteOpen || undefined}>
         <header className="site-header shell">
-          <button className="brand" onClick={() => setSkill(null)} aria-label="Color Perception Trainer home">
+          <button className="brand" onClick={() => setActivePractice(null)} aria-label="Color Perception Trainer home">
             <span className="brand-dot" aria-hidden="true" />
             <span>Color<br />Perception</span>
           </button>
@@ -346,9 +571,19 @@ export function App() {
             <kbd>P</kbd>
           </button>
         </header>
-        {skill
-          ? <Practice skill={skill} progress={progress} onProgress={updateProgress} onExit={() => setSkill(null)} paletteOpen={paletteOpen} />
-          : <Home progress={progress} onStart={setSkill} />}
+        {activePractice?.id === 'relative-shift' && (
+          <RelativeShiftPractice skill={activePractice.skill} progress={progress} onProgress={updateProgress} onExit={() => setActivePractice(null)} paletteOpen={paletteOpen} />
+        )}
+        {activePractice?.id === 'hidden-undertone' && (
+          <HiddenUndertonePractice progress={progress} onProgress={updateProgress} onExit={() => setActivePractice(null)} paletteOpen={paletteOpen} />
+        )}
+        {!activePractice && (
+          <Home
+            progress={progress}
+            onStartRelative={(skill) => setActivePractice({ id: 'relative-shift', skill })}
+            onStartHidden={() => setActivePractice({ id: 'hidden-undertone' })}
+          />
+        )}
       </div>
       <PaletteReference open={paletteOpen} onClose={() => setPaletteOpen(false)} returnFocus={paletteReturnFocus} />
     </>

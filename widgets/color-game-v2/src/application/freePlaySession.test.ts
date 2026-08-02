@@ -43,4 +43,17 @@ describe('free-play session lifecycle', () => {
     const recovered = nextSessionQuestion(failed, () => exercise('recovered'))
     expect(recovered.phase).toBe('question')
   })
+
+  it('supports exercise-specific equality for structured answers', () => {
+    const initial = startSession(() => exercise('structured', 'left'))
+    const answered = submitSessionAnswer(
+      initial,
+      'LEFT',
+      0,
+      (count) => count + 1,
+      (selected, correct) => selected.toLowerCase() === correct,
+    )
+    expect(answered.session.phase).toBe('feedback')
+    if (answered.session.phase === 'feedback') expect(answered.session.outcome.isCorrect).toBe(true)
+  })
 })

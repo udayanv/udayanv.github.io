@@ -3,19 +3,24 @@ import {
   emptyProgress,
   type PerformanceTotal,
   type ProgressSnapshot,
+  type SkillProgress,
 } from '../application/progress'
+import type { DifficultyMode } from '../domain/exercises/types'
 
 interface StorageLike {
   getItem(key: string): string | null
   setItem(key: string, value: string): void
 }
 
-interface LegacyProgressSnapshot {
+interface Version1ProgressSnapshot {
   version: 1
-  skills: {
-    lightness: PerformanceTotal
-    chroma: PerformanceTotal
-  }
+  skills: { lightness: PerformanceTotal; chroma: PerformanceTotal }
+}
+
+interface Version2ProgressSnapshot {
+  version: 2
+  skills: { lightness: SkillProgress; chroma: SkillProgress }
+  difficultyMode: { lightness: DifficultyMode; chroma: DifficultyMode }
 }
 
 const storageKey = 'color-perception-trainer.progress.v1'
@@ -30,25 +35,56 @@ function isTotal(value: unknown): value is PerformanceTotal {
     (total.correct ?? 1) <= (total.attempted ?? 0)
 }
 
+function isSkillProgress(value: unknown): value is SkillProgress {
+  if (!isTotal(value)) return false
+  const progress = value as Partial<SkillProgress>
+  return bands.every((band) => isTotal(progress.byBand?.[band]))
+}
+
+function isMode(value: unknown): value is DifficultyMode {
+  return typeof value === 'string' && modes.has(value)
+}
+
 function isSnapshot(value: unknown): value is ProgressSnapshot {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<ProgressSnapshot>
-  return candidate.version === 2 &&
-    isTotal(candidate.skills?.lightness) && isTotal(candidate.skills?.chroma) &&
-    bands.every((band) => isTotal(candidate.skills?.lightness?.byBand?.[band])) &&
-    bands.every((band) => isTotal(candidate.skills?.chroma?.byBand?.[band])) &&
-    modes.has(candidate.difficultyMode?.lightness ?? '') &&
-    modes.has(candidate.difficultyMode?.chroma ?? '')
+  return candidate.version === 3 &&
+    isSkillProgress(candidate.skills?.lightness) &&
+    isSkillProgress(candidate.skills?.chroma) &&
+    isMode(candidate.difficultyMode?.lightness) &&
+    isMode(candidate.difficultyMode?.chroma) &&
+    isSkillProgress(candidate.hiddenUndertone?.overall) &&
+    isSkillProgress(candidate.hiddenUndertone?.family) &&
+    isSkillProgress(candidate.hiddenUndertone?.lean) &&
+    isMode(candidate.hiddenUndertone?.difficultyMode)
 }
 
-function isLegacySnapshot(value: unknown): value is LegacyProgressSnapshot {
+function isVersion2Snapshot(value: unknown): value is Version2ProgressSnapshot {
   if (!value || typeof value !== 'object') return false
-  const candidate = value as Partial<LegacyProgressSnapshot>
+  const candidate = value as Partial<Version2ProgressSnapshot>
+  return candidate.version === 2 &&
+    isSkillProgress(candidate.skills?.lightness) &&
+    isSkillProgress(candidate.skills?.chroma) &&
+    isMode(candidate.difficultyMode?.lightness) &&
+    isMode(candidate.difficultyMode?.chroma)
+}
+
+function isVersion1Snapshot(value: unknown): value is Version1ProgressSnapshot {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<Version1ProgressSnapshot>
   return candidate.version === 1 &&
     isTotal(candidate.skills?.lightness) && isTotal(candidate.skills?.chroma)
 }
 
-function migrate(snapshot: LegacyProgressSnapshot): ProgressSnapshot {
+function migrateVersion2(snapshot: Version2ProgressSnapshot): ProgressSnapshot {
+  return {
+    ...emptyProgress(),
+    skills: snapshot.skills,
+    difficultyMode: snapshot.difficultyMode,
+  }
+}
+
+function migrateVersion1(snapshot: Version1ProgressSnapshot): ProgressSnapshot {
   const next = emptyProgress()
   return {
     ...next,
@@ -68,7 +104,8 @@ export class LocalStorageProgressRepository implements ProgressRepository {
       if (!saved) return emptyProgress()
       const parsed: unknown = JSON.parse(saved)
       if (isSnapshot(parsed)) return parsed
-      if (isLegacySnapshot(parsed)) return migrate(parsed)
+      if (isVersion2Snapshot(parsed)) return migrateVersion2(parsed)
+      if (isVersion1Snapshot(parsed)) return migrateVersion1(parsed)
       return emptyProgress()
     } catch {
       return emptyProgress()

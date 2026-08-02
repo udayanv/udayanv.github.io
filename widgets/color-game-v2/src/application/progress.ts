@@ -10,9 +10,15 @@ export interface SkillProgress extends PerformanceTotal {
 }
 
 export interface ProgressSnapshot {
-  version: 2
+  version: 3
   skills: Record<R1Skill, SkillProgress>
   difficultyMode: Record<R1Skill, DifficultyMode>
+  hiddenUndertone: {
+    overall: SkillProgress
+    family: SkillProgress
+    lean: SkillProgress
+    difficultyMode: DifficultyMode
+  }
 }
 
 const emptyTotal = (): PerformanceTotal => ({ attempted: 0, correct: 0 })
@@ -27,7 +33,7 @@ const emptySkillProgress = (): SkillProgress => ({
 })
 
 export const emptyProgress = (): ProgressSnapshot => ({
-  version: 2,
+  version: 3,
   skills: {
     lightness: emptySkillProgress(),
     chroma: emptySkillProgress(),
@@ -36,7 +42,32 @@ export const emptyProgress = (): ProgressSnapshot => ({
     lightness: 'auto',
     chroma: 'auto',
   },
+  hiddenUndertone: {
+    overall: emptySkillProgress(),
+    family: emptySkillProgress(),
+    lean: emptySkillProgress(),
+    difficultyMode: 'auto',
+  },
 })
+
+function recordPerformance(
+  progress: SkillProgress,
+  band: DifficultyBand,
+  isCorrect: boolean,
+): SkillProgress {
+  const currentBand = progress.byBand[band]
+  return {
+    attempted: progress.attempted + 1,
+    correct: progress.correct + Number(isCorrect),
+    byBand: {
+      ...progress.byBand,
+      [band]: {
+        attempted: currentBand.attempted + 1,
+        correct: currentBand.correct + Number(isCorrect),
+      },
+    },
+  }
+}
 
 export function recordAnswer(
   snapshot: ProgressSnapshot,
@@ -44,23 +75,27 @@ export function recordAnswer(
   band: DifficultyBand,
   isCorrect: boolean,
 ): ProgressSnapshot {
-  const current = snapshot.skills[skill]
-  const currentBand = current.byBand[band]
   return {
     ...snapshot,
     skills: {
       ...snapshot.skills,
-      [skill]: {
-        attempted: current.attempted + 1,
-        correct: current.correct + Number(isCorrect),
-        byBand: {
-          ...current.byBand,
-          [band]: {
-            attempted: currentBand.attempted + 1,
-            correct: currentBand.correct + Number(isCorrect),
-          },
-        },
-      },
+      [skill]: recordPerformance(snapshot.skills[skill], band, isCorrect),
+    },
+  }
+}
+
+export function recordHiddenUndertoneAnswer(
+  snapshot: ProgressSnapshot,
+  band: DifficultyBand,
+  outcome: { familyCorrect: boolean; leanCorrect: boolean; isCorrect: boolean },
+): ProgressSnapshot {
+  return {
+    ...snapshot,
+    hiddenUndertone: {
+      ...snapshot.hiddenUndertone,
+      overall: recordPerformance(snapshot.hiddenUndertone.overall, band, outcome.isCorrect),
+      family: recordPerformance(snapshot.hiddenUndertone.family, band, outcome.familyCorrect),
+      lean: recordPerformance(snapshot.hiddenUndertone.lean, band, outcome.leanCorrect),
     },
   }
 }
@@ -73,5 +108,15 @@ export function setDifficultyMode(
   return {
     ...snapshot,
     difficultyMode: { ...snapshot.difficultyMode, [skill]: mode },
+  }
+}
+
+export function setHiddenUndertoneDifficultyMode(
+  snapshot: ProgressSnapshot,
+  mode: DifficultyMode,
+): ProgressSnapshot {
+  return {
+    ...snapshot,
+    hiddenUndertone: { ...snapshot.hiddenUndertone, difficultyMode: mode },
   }
 }

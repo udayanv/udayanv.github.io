@@ -43,10 +43,27 @@ describe('progress repository', () => {
     })
 
     const result = repository.load()
-    expect(result.version).toBe(2)
+    expect(result.version).toBe(3)
     expect(result.skills.lightness.attempted).toBe(8)
     expect(result.skills.lightness.byBand.easy.attempted).toBe(0)
     expect(result.difficultyMode.lightness).toBe('auto')
+    expect(result.hiddenUndertone.overall.attempted).toBe(0)
+  })
+
+  it('migrates version 2 progress and initializes R2 independently', () => {
+    const version2 = emptyProgress()
+    const repository = new LocalStorageProgressRepository({
+      getItem: () => JSON.stringify({
+        version: 2,
+        skills: version2.skills,
+        difficultyMode: { lightness: 'medium', chroma: 'auto' },
+      }),
+      setItem: () => undefined,
+    })
+    const result = repository.load()
+    expect(result.version).toBe(3)
+    expect(result.difficultyMode.lightness).toBe('medium')
+    expect(result.hiddenUndertone.difficultyMode).toBe('auto')
   })
 
   it('rejects impossible or malformed persisted totals', () => {

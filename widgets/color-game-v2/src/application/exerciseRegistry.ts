@@ -18,8 +18,8 @@ export const exerciseRegistry: ExerciseListing[] = [
     id: 'hidden-undertone',
     title: 'Hidden Undertone',
     description: 'Find the color family beneath a muted color.',
-    release: 'R2',
-    playable: false,
+    release: 'Available now',
+    playable: true,
   },
   {
     id: 'mix-a-color',

@@ -14,7 +14,6 @@ describe('Hidden Undertone generation', () => {
       const range = hiddenUndertoneRanges[difficulty]
       expect(isInSrgbGamut(exercise.question.color)).toBe(true)
       expect(lch.C).toBeGreaterThan(0.015)
-      if (difficulty === 'hard') expect(lch.C).toBeGreaterThanOrEqual(0.025)
       expect(normalized).toBeGreaterThanOrEqual(range.minimum - 1e-5)
       expect(normalized).toBeLessThanOrEqual(range.maximum + 1e-5)
     }
@@ -26,5 +25,19 @@ describe('Hidden Undertone generation', () => {
     expect(anchor).toBeDefined()
     expect(exercise.correctAnswer).toEqual({ family: anchor?.family, lean: anchor?.lean })
     expect(exercise.feedback.anchorName).toBe(anchor?.name)
+  })
+
+  it('selects one anchor and retains it while generating the question parameters', () => {
+    class CountingRandom {
+      calls = 0
+      next() {
+        this.calls += 1
+        return this.calls === 1 ? 0 : 0.5
+      }
+    }
+    const random = new CountingRandom()
+    const exercise = new HiddenUndertoneGenerator(random).generate({ difficulty: 'hard' })
+    expect(exercise.feedback.anchorId).toBe('cool-yellow')
+    expect(exercise.feedback.anchorName).toBe('Hansa Yellow Light')
   })
 })

@@ -289,9 +289,11 @@ To keep difficulty comparable across lightnesses and hues, use normalized chroma
 |---|---:|---|
 | Easy | 0.30-0.40 | Strongly muted but readily identifiable. |
 | Medium | 0.20-0.30 | Quieter undertone with the same two-stage family and warm/cool answer. |
-| Hard | 0.12-0.20 | Must still have final `C >= 0.025` and pass display-distinction validation. |
+| Hard | 0.12-0.20 | Must remain above the operational-neutral boundary (`C > 0.015`) and pass display-distinction validation. |
 
 All bands use the same two-stage task: identify Yellow, Red, or Blue, then identify the warm or cool lean. The two selections form one six-anchor answer. Family and warm/cool stages are scored separately for diagnostic progress, while the whole question is correct only when both stages are correct. Feedback names the generated anchor and explains that the answer follows the app's defined learning anchors. Future neutral-detection questions, if added, must be a separate question type with their own scoring and calibration.
+
+R2 selects the target anchor uniformly once, then retains that anchor while retrying lightness and normalized-chroma parameters. This prevents anchor-specific validation failures from silently redrawing the target and biasing the accepted-question distribution. A provisional Hard-only floor of `C >= 0.025` was removed because it disproportionately rejected yellow and Phthalo Blue questions. Reintroduce or recalibrate an additional visibility floor if learner testing shows that questions near `C = 0.015` are not reliably noticeable across representative displays.
 
 R2 stores overall, family-stage, and warm/cool-stage performance, including per-band totals. Auto uses overall question performance only: it begins at Easy, may move to Medium after at least 5 attempts with at least 60% correct, and may move to Hard after at least 15 attempts with at least 70% correct. These thresholds belong to the Hidden Undertone difficulty policy and may be recalibrated without changing Relative Shift.
 
@@ -325,6 +327,7 @@ The final source/result pair and every distractor prediction must be evaluated a
 
 ## 9. Change Log
 
+- 2026-08-01 — Removed the provisional R2 Hard `C >= 0.025` floor, retained the `C > 0.015` operational-neutral boundary, and changed retries to preserve the initially selected anchor.
 - 2026-08-01 — Defined R2 as a two-stage family/lean interaction with separate stage progress, combined question correctness, and an independent Auto policy.
 - 2026-08-01 — Defined operational neutrality and initial R2/R3 difficulty bands; added shared Auto/Easy/Medium/Hard controls and progress requirements.
 - 2026-08-01 — Added a sequenced architecture plan separating prerequisites for R2/R3 from improvements that can follow exercise-domain work.

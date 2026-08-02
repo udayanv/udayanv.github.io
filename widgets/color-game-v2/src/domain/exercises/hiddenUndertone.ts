@@ -6,6 +6,7 @@ import {
   oklchToOklab,
 } from '../color/conversion'
 import { palette } from '../palette/palette'
+import type { PaletteAnchor } from '../palette/palette'
 import type { RandomSource } from '../ports/randomSource'
 import { generateValidated } from './generation'
 import type {
@@ -30,7 +31,7 @@ export const hiddenUndertoneRanges: Record<DifficultyBand, NormalizedChromaRange
 }
 
 const operationalNeutralMaximum = 0.015
-const hardMinimumChroma = 0.025
+const chromaEpsilon = 0.000001
 
 export class HiddenUndertoneGenerator implements ExerciseGenerator<
   HiddenUndertoneGenerationRequest,
@@ -41,20 +42,27 @@ export class HiddenUndertoneGenerator implements ExerciseGenerator<
   constructor(private readonly random: RandomSource) {}
 
   generate(input: HiddenUndertoneGenerationRequest): HiddenUndertoneExercise {
+    const anchor = palette[Math.floor(this.random.next() * palette.length)]
     return generateValidated(
-      () => this.createCandidate(input),
+      () => this.createCandidate(input, anchor),
       (exercise) => this.isFairQuestion(exercise),
     )
   }
 
-  private createCandidate(input: HiddenUndertoneGenerationRequest): HiddenUndertoneExercise {
-    const anchor = palette[Math.floor(this.random.next() * palette.length)]
+  private createCandidate(
+    input: HiddenUndertoneGenerationRequest,
+    anchor: PaletteAnchor,
+  ): HiddenUndertoneExercise {
     const anchorHue = oklabToOklch(anchor.color).h
     const L = 0.44 + this.random.next() * 0.36
     const range = hiddenUndertoneRanges[input.difficulty]
-    const normalizedChroma = range.minimum +
-      this.random.next() * (range.maximum - range.minimum)
-    const C = maxSrgbChroma(L, anchorHue) * normalizedChroma
+    const maximumChroma = maxSrgbChroma(L, anchorHue)
+    const visibleMinimumRatio = (operationalNeutralMaximum + chromaEpsilon) / maximumChroma
+    const effectiveMinimumRatio = Math.max(range.minimum, visibleMinimumRatio)
+    const normalizedChroma = effectiveMinimumRatio <= range.maximum
+      ? effectiveMinimumRatio + this.random.next() * (range.maximum - effectiveMinimumRatio)
+      : range.minimum
+    const C = maximumChroma * normalizedChroma
     const color = gamutMap(oklchToOklab({ L, C, h: anchorHue }))
 
     return {
@@ -88,7 +96,6 @@ export class HiddenUndertoneGenerator implements ExerciseGenerator<
 
     return isInSrgbGamut(color) &&
       C > operationalNeutralMaximum &&
-      (exercise.difficulty !== 'hard' || C >= hardMinimumChroma) &&
       normalizedChroma >= range.minimum - 1e-5 &&
       normalizedChroma <= range.maximum + 1e-5 &&
       wrappedHueDifference < 1e-5

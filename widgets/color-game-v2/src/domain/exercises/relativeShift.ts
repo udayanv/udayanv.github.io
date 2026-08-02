@@ -1,17 +1,22 @@
-import { maxSrgbChroma, oklabToOklch, oklchToOklab } from '../color/conversion'
+import { gamutMap, isInSrgbGamut, maxSrgbChroma, oklabToOklch, oklchToOklab } from '../color/conversion'
 import { palette } from '../palette/palette'
-import type { RandomSource } from '../../infrastructure/random'
+import type { RandomSource } from '../ports/randomSource'
 import type {
   Exercise,
   ExerciseGenerator,
   GenerationRequest,
   RelativeShiftQuestion,
+  DifficultyBand,
   R1Skill,
   SwatchSide,
+  RelativeShiftFeedbackData,
 } from './types'
+import { generateValidated } from './generation'
 
-const lightnessSteps = [0.14, 0.1, 0.075]
-const chromaSteps = [0.08, 0.06, 0.045]
+export const relativeShiftDifferences: Record<R1Skill, Record<DifficultyBand, number>> = {
+  lightness: { easy: 0.14, medium: 0.1, hard: 0.075 },
+  chroma: { easy: 0.08, medium: 0.06, hard: 0.045 },
+}
 
 const copy = {
   lightness: {
@@ -26,16 +31,26 @@ const copy = {
   },
 }
 
-function bandValue(values: number[], difficulty: number): number {
-  return values[Math.max(0, Math.min(values.length - 1, difficulty - 1))]
-}
-
-export class RelativeShiftGenerator implements ExerciseGenerator {
+export class RelativeShiftGenerator implements ExerciseGenerator<
+  GenerationRequest,
+  RelativeShiftQuestion,
+  SwatchSide,
+  RelativeShiftFeedbackData
+> {
   constructor(private readonly random: RandomSource) {}
 
   generate(
     input: GenerationRequest,
-  ): Exercise<RelativeShiftQuestion, SwatchSide> {
+  ): Exercise<RelativeShiftQuestion, SwatchSide, RelativeShiftFeedbackData> {
+    return generateValidated(
+      () => this.createCandidate(input),
+      (exercise) => this.isFairQuestion(exercise),
+    )
+  }
+
+  private createCandidate(
+    input: GenerationRequest,
+  ): Exercise<RelativeShiftQuestion, SwatchSide, RelativeShiftFeedbackData> {
     const anchor = palette[Math.floor(this.random.next() * palette.length)]
     const anchorLch = oklabToOklch(anchor.color)
     const correctSide: SwatchSide = this.random.next() < 0.5 ? 'left' : 'right'
@@ -63,8 +78,8 @@ export class RelativeShiftGenerator implements ExerciseGenerator {
     }
   }
 
-  private makeLightnessPair(baseL: number, h: number, difficulty: number) {
-    const difference = bandValue(lightnessSteps, difficulty)
+  private makeLightnessPair(baseL: number, h: number, difficulty: DifficultyBand) {
+    const difference = relativeShiftDifferences.lightness[difficulty]
     const center = Math.min(0.78, Math.max(0.4, baseL))
     const lowL = center - difference / 2
     const highL = center + difference / 2
@@ -76,9 +91,9 @@ export class RelativeShiftGenerator implements ExerciseGenerator {
     ]
   }
 
-  private makeChromaPair(L: number, h: number, difficulty: number) {
+  private makeChromaPair(L: number, h: number, difficulty: DifficultyBand) {
     const safeL = Math.min(0.8, Math.max(0.48, L))
-    const difference = bandValue(chromaSteps, difficulty)
+    const difference = relativeShiftDifferences.chroma[difficulty]
     const maxC = maxSrgbChroma(safeL, h) * 0.84
     const highC = Math.min(maxC, 0.19)
     const lowC = Math.max(0.025, highC - difference)
@@ -86,6 +101,26 @@ export class RelativeShiftGenerator implements ExerciseGenerator {
       oklchToOklab({ L: safeL, C: lowC, h }),
       oklchToOklab({ L: safeL, C: highC, h }),
     ]
+  }
+
+  private isFairQuestion(exercise: Exercise<RelativeShiftQuestion, SwatchSide, RelativeShiftFeedbackData>): boolean {
+    const left = gamutMap(exercise.question.left)
+    const right = gamutMap(exercise.question.right)
+    const leftLch = oklabToOklch(left)
+    const rightLch = oklabToOklch(right)
+    const expected = relativeShiftDifferences[exercise.skill as R1Skill][exercise.difficulty]
+    const visibleDifference = exercise.skill === 'lightness'
+      ? Math.abs(left.L - right.L)
+      : Math.abs(leftLch.C - rightLch.C)
+    const unchangedDimension = exercise.skill === 'lightness'
+      ? Math.abs(leftLch.C - rightLch.C)
+      : Math.abs(left.L - right.L)
+    const hueDifference = Math.abs(leftLch.h - rightLch.h)
+    const wrappedHueDifference = Math.min(hueDifference, 360 - hueDifference)
+
+    return isInSrgbGamut(left) && isInSrgbGamut(right) &&
+      visibleDifference >= expected * 0.99 &&
+      unchangedDimension < 1e-6 && wrappedHueDifference < 1e-6
   }
 }
 

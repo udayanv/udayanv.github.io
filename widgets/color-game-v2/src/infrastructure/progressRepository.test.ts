@@ -10,9 +10,11 @@ describe('progress repository', () => {
       setItem: (key: string, value: string) => { values.set(key, value) },
     }
     const repository = new LocalStorageProgressRepository(storage)
-    repository.save(recordAnswer(emptyProgress(), 'lightness', true))
-    expect(repository.load().skills.lightness).toEqual({ attempted: 1, correct: 1 })
-    expect(repository.load().skills.chroma).toEqual({ attempted: 0, correct: 0 })
+    repository.save(recordAnswer(emptyProgress(), 'lightness', 'medium', true))
+    expect(repository.load().skills.lightness.attempted).toBe(1)
+    expect(repository.load().skills.lightness.correct).toBe(1)
+    expect(repository.load().skills.lightness.byBand.medium).toEqual({ attempted: 1, correct: 1 })
+    expect(repository.load().skills.chroma.attempted).toBe(0)
   })
 
   it('falls back safely when storage fails', () => {
@@ -22,5 +24,42 @@ describe('progress repository', () => {
     })
     expect(repository.load()).toEqual(emptyProgress())
     expect(() => repository.save(emptyProgress())).not.toThrow()
+  })
+
+  it('migrates version 1 totals without assigning them to a difficulty band', () => {
+    const values = new Map<string, string>([[
+      'color-perception-trainer.progress.v1',
+      JSON.stringify({
+        version: 1,
+        skills: {
+          lightness: { attempted: 8, correct: 5 },
+          chroma: { attempted: 3, correct: 1 },
+        },
+      }),
+    ]])
+    const repository = new LocalStorageProgressRepository({
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => { values.set(key, value) },
+    })
+
+    const result = repository.load()
+    expect(result.version).toBe(2)
+    expect(result.skills.lightness.attempted).toBe(8)
+    expect(result.skills.lightness.byBand.easy.attempted).toBe(0)
+    expect(result.difficultyMode.lightness).toBe('auto')
+  })
+
+  it('rejects impossible or malformed persisted totals', () => {
+    const repository = new LocalStorageProgressRepository({
+      getItem: () => JSON.stringify({
+        version: 1,
+        skills: {
+          lightness: { attempted: 1, correct: 2 },
+          chroma: { attempted: 0, correct: 0 },
+        },
+      }),
+      setItem: () => undefined,
+    })
+    expect(repository.load()).toEqual(emptyProgress())
   })
 })

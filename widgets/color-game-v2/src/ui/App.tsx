@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { difficultyFor, recordAnswer, type ProgressSnapshot } from '../application/progress'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { recordAnswer, setDifficultyMode, type ProgressSnapshot } from '../application/progress'
 import { exerciseRegistry } from '../application/exerciseRegistry'
+import { relativeShiftDifficultyPolicy } from '../application/relativeShiftDifficulty'
+import { nextSessionQuestion, startSession, submitSessionAnswer, type FreePlaySession } from '../application/freePlaySession'
 import { toDisplayColor } from '../domain/color/conversion'
 import { RelativeShiftGenerator, skillLabel } from '../domain/exercises/relativeShift'
-import type { Exercise, RelativeShiftQuestion, R1Skill, SwatchSide } from '../domain/exercises/types'
-import { evaluateAnswer, type AnswerOutcome } from '../domain/scoring/scoring'
+import type { DifficultyMode, RelativeShiftFeedbackData, RelativeShiftQuestion, R1Skill, SwatchSide } from '../domain/exercises/types'
 import { paletteDisplay } from '../domain/palette/palette'
 import { BrowserRandom } from '../infrastructure/random'
 import { LocalStorageProgressRepository } from '../infrastructure/progressRepository'
 
-type ActiveExercise = Exercise<RelativeShiftQuestion, SwatchSide>
+type ActiveSession = FreePlaySession<RelativeShiftQuestion, SwatchSide, RelativeShiftFeedbackData>
 
 const generator = new RelativeShiftGenerator(new BrowserRandom())
 const repository = new LocalStorageProgressRepository(window.localStorage)
@@ -20,21 +21,51 @@ function ProgressLine({ progress }: { progress: { attempted: number; correct: nu
   return <span>{progress.correct} of {progress.attempted} correct · {percent}%</span>
 }
 
-function PaletteReference({ open, onClose }: { open: boolean; onClose: () => void }) {
+function PaletteReference({ open, onClose, returnFocus }: {
+  open: boolean
+  onClose: () => void
+  returnFocus: { current: HTMLElement | null }
+}) {
+  const panelRef = useRef<HTMLElement>(null)
+
   useEffect(() => {
     if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ) ?? []).filter((element) => !element.hasAttribute('disabled'))
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      returnFocus.current?.focus()
+    }
+  }, [open, onClose, returnFocus])
 
   if (!open) return null
   return (
     <div className="palette-layer">
       <button className="palette-backdrop" aria-label="Close palette reference" onClick={onClose} />
-      <aside className="palette-panel" role="dialog" aria-modal="true" aria-labelledby="palette-title">
+      <aside ref={panelRef} className="palette-panel" role="dialog" aria-modal="true" aria-labelledby="palette-title">
         <div className="palette-heading">
           <div>
             <p className="eyebrow">Keep nearby</p>
@@ -125,24 +156,39 @@ function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: 
   onExit: () => void
   paletteOpen?: boolean
 }) {
-  const makeQuestion = useCallback(
-    () => generator.generate({ skill, difficulty: difficultyFor(progress.skills[skill]) }),
-    [progress, skill],
-  )
-  const [exercise, setExercise] = useState<ActiveExercise>(makeQuestion)
-  const [outcome, setOutcome] = useState<AnswerOutcome | null>(null)
+  const makeQuestion = useCallback(() => generator.generate({
+    skill,
+    difficulty: relativeShiftDifficultyPolicy.resolve(
+      progress.difficultyMode[skill],
+      progress.skills[skill],
+    ),
+  }), [progress, skill])
+  const [session, setSession] = useState<ActiveSession>(() => startSession(makeQuestion))
 
   const answer = useCallback((side: SwatchSide) => {
-    if (outcome) return
-    const result = evaluateAnswer(side, exercise.correctAnswer)
-    setOutcome(result)
-    onProgress(recordAnswer(progress, skill, result.isCorrect))
-  }, [exercise, onProgress, outcome, progress, skill])
+    const result = submitSessionAnswer(
+      session,
+      side,
+      progress,
+      (snapshot, exercise, isCorrect) => recordAnswer(
+        snapshot,
+        skill,
+        exercise.difficulty,
+        isCorrect,
+      ),
+    )
+    if (result.session === session) return
+    setSession(result.session)
+    onProgress(result.progress)
+  }, [onProgress, progress, session, skill])
 
   const next = useCallback(() => {
-    setExercise(makeQuestion())
-    setOutcome(null)
+    setSession((current) => nextSessionQuestion(current, makeQuestion))
   }, [makeQuestion])
+
+  const changeDifficulty = useCallback((mode: DifficultyMode) => {
+    onProgress(setDifficultyMode(progress, skill, mode))
+  }, [onProgress, progress, skill])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -155,12 +201,31 @@ function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: 
         event.preventDefault()
         answer('right')
       }
-      if (event.key.toLowerCase() === 'n' && outcome) next()
+      if (event.key.toLowerCase() === 'n' && session.phase === 'feedback') next()
       if (event.key === 'Escape') onExit()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [answer, next, onExit, outcome, paletteOpen])
+  }, [answer, next, onExit, paletteOpen, session.phase])
+
+  if (session.phase === 'generation-error') {
+    return (
+      <main className="practice shell">
+        <div className="practice-topbar">
+          <button className="text-button" onClick={onExit}>← All exercises</button>
+        </div>
+        <section className="generation-error" role="alert">
+          <p className="eyebrow">Question unavailable</p>
+          <h1>Let’s try another color.</h1>
+          <p>{session.message} Your progress has not changed.</p>
+          <button className="primary-button" onClick={next}>Try again</button>
+        </section>
+      </main>
+    )
+  }
+
+  const { exercise } = session
+  const outcome = session.phase === 'feedback' ? session.outcome : null
 
   const leftCss = useMemo(() => toDisplayColor(exercise.question.left).css, [exercise])
   const rightCss = useMemo(() => toDisplayColor(exercise.question.right).css, [exercise])
@@ -174,16 +239,32 @@ function Practice({ skill, progress, onProgress, onExit, paletteOpen = false }: 
       </div>
 
       <section className="question-area" aria-labelledby="question-title">
+        <fieldset className="difficulty-control">
+          <legend>Difficulty</legend>
+          {(['auto', 'easy', 'medium', 'hard'] as const).map((mode) => (
+            <label key={mode}>
+              <input
+                type="radio"
+                name="difficulty"
+                value={mode}
+                checked={progress.difficultyMode[skill] === mode}
+                onChange={() => changeDifficulty(mode)}
+              />
+              <span>{mode[0].toUpperCase() + mode.slice(1)}</span>
+            </label>
+          ))}
+          <small>Changes apply to the next color.</small>
+        </fieldset>
         <div className="question-heading">
-          <p className="eyebrow">Relative shift · {skillLabel(skill)}</p>
+          <p className="eyebrow">Relative shift · {skillLabel(skill)} · {exercise.difficulty}</p>
           <h1 id="question-title">{exercise.question.prompt}</h1>
           <p>{skill === 'lightness' ? 'Look for the color that feels closer to white.' : 'Look for the color that feels stronger and less muted.'}</p>
         </div>
 
         <div className="swatch-grid" aria-label="Answer choices">
           {([['left', leftCss], ['right', rightCss]] as const).map(([side, css], index) => {
-            const isCorrect = outcome && exercise.correctAnswer === side
-            const isWrong = outcome && outcome.selected === side && !outcome.isCorrect
+            const isCorrect = Boolean(outcome) && exercise.correctAnswer === side
+            const isWrong = outcome?.selected === side && !outcome.isCorrect
             return (
               <button
                 key={side}
@@ -225,6 +306,14 @@ export function App() {
   const [progress, setProgress] = useState(() => repository.load())
   const [skill, setSkill] = useState<R1Skill | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const paletteReturnFocus = useRef<HTMLElement | null>(null)
+
+  const openPalette = useCallback(() => {
+    paletteReturnFocus.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    setPaletteOpen(true)
+  }, [])
 
   const updateProgress = useCallback((next: ProgressSnapshot) => {
     setProgress(next)
@@ -233,29 +322,35 @@ export function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 'p') setPaletteOpen((value) => !value)
+      if (event.altKey || event.ctrlKey || event.metaKey) return
+      if (event.key.toLowerCase() === 'p') {
+        if (paletteOpen) setPaletteOpen(false)
+        else openPalette()
+      }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [openPalette, paletteOpen])
 
   return (
     <>
-      <header className="site-header shell">
-        <button className="brand" onClick={() => setSkill(null)} aria-label="Color Perception Trainer home">
-          <span className="brand-dot" aria-hidden="true" />
-          <span>Color<br />Perception</span>
-        </button>
-        <button className="palette-button" onClick={() => setPaletteOpen(true)} aria-haspopup="dialog">
-          <span className="mini-swatches" aria-hidden="true"><i /><i /><i /></span>
-          Palette reference
-          <kbd>P</kbd>
-        </button>
-      </header>
-      {skill
-        ? <Practice skill={skill} progress={progress} onProgress={updateProgress} onExit={() => setSkill(null)} paletteOpen={paletteOpen} />
-        : <Home progress={progress} onStart={setSkill} />}
-      <PaletteReference open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <div className="app-content" inert={paletteOpen ? true : undefined} aria-hidden={paletteOpen || undefined}>
+        <header className="site-header shell">
+          <button className="brand" onClick={() => setSkill(null)} aria-label="Color Perception Trainer home">
+            <span className="brand-dot" aria-hidden="true" />
+            <span>Color<br />Perception</span>
+          </button>
+          <button className="palette-button" onClick={openPalette} aria-haspopup="dialog">
+            <span className="mini-swatches" aria-hidden="true"><i /><i /><i /></span>
+            Palette reference
+            <kbd>P</kbd>
+          </button>
+        </header>
+        {skill
+          ? <Practice skill={skill} progress={progress} onProgress={updateProgress} onExit={() => setSkill(null)} paletteOpen={paletteOpen} />
+          : <Home progress={progress} onStart={setSkill} />}
+      </div>
+      <PaletteReference open={paletteOpen} onClose={() => setPaletteOpen(false)} returnFocus={paletteReturnFocus} />
     </>
   )
 }

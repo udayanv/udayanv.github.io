@@ -1,6 +1,6 @@
-export interface RandomSource {
-  next(): number
-}
+import type { RandomSource } from '../domain/ports/randomSource'
+
+export type { RandomSource } from '../domain/ports/randomSource'
 
 export class BrowserRandom implements RandomSource {
   next(): number {

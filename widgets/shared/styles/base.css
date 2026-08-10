@@ -1,0 +1,68 @@
+@layer widget-base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-width: 320px;
+    background: var(--widget-color-canvas);
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--widget-color-text);
+    background: var(--widget-color-canvas);
+    font-family: var(--widget-font-sans);
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+  }
+
+  :where(button, input, select, textarea) {
+    color: inherit;
+    font: inherit;
+  }
+
+  :where(button, select, input[type="checkbox"], input[type="radio"], input[type="range"]) {
+    cursor: pointer;
+  }
+
+  :where(button, input, select, textarea):focus-visible,
+  :where(a):focus-visible {
+    outline: 2px solid var(--widget-color-focus);
+    outline-offset: 3px;
+    box-shadow: var(--widget-focus-ring);
+  }
+
+  :where(img, svg, canvas) {
+    display: block;
+    max-width: 100%;
+  }
+
+  :where(h1, h2, h3, p) {
+    margin-block-start: 0;
+  }
+
+  :where(a) {
+    color: var(--widget-color-accent);
+    text-underline-offset: 0.18em;
+  }
+
+  :where(a:hover) {
+    color: var(--widget-color-accent-hover);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+

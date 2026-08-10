@@ -1,0 +1,18 @@
+# Dependencies and local package-manager data
+node_modules/
+.pnpm-store/
+
+# Generated application output
+dist/
+*.tsbuildinfo
+
+# Generated Vite configuration artifacts
+vite.config.js
+vite.config.d.ts
+
+# Local environment and operating-system files
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

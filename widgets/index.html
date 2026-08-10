@@ -1,12 +1,57 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A collection of small tools for exploring color, perception, and visual relationships.">
     <title>Udayan's Widgets</title>
+    <link rel="stylesheet" href="shared/styles/tokens.css">
+    <link rel="stylesheet" href="shared/styles/base.css">
+    <link rel="stylesheet" href="index.css">
 </head>
 <body>
-    <h1>Widgets!</h1>
-    <p>This site will eventually contain a collection of widgets.</p>
+    <main class="catalog-shell">
+        <header class="catalog-intro">
+            <p class="eyebrow">Small tools, focused ideas</p>
+            <h1>Widgets</h1>
+            <p class="lede">Experiments for exploring color, perception, and visual relationships in the browser.</p>
+        </header>
+
+        <section aria-labelledby="available-title">
+            <div class="section-heading">
+                <h2 id="available-title">Available now</h2>
+                <p>Each tool runs independently.</p>
+            </div>
+
+            <div class="widget-grid">
+                <a class="widget-card widget-card--featured" href="color-game-v2/">
+                    <span class="card-meta"><span class="status status--active">Active</span> Learning tool</span>
+                    <span class="card-title">Color Perception Trainer</span>
+                    <span class="card-copy">Practice lightness, chroma, and hidden undertones with guided color comparisons.</span>
+                    <span class="card-action">Open trainer <span aria-hidden="true">&rarr;</span></span>
+                </a>
+
+                <a class="widget-card" href="color-mixer/">
+                    <span class="card-meta"><span class="status">Available</span> Utility</span>
+                    <span class="card-title">Color Mixer</span>
+                    <span class="card-copy">Move between RGB, paint-style RYB, and hue-value-chroma controls.</span>
+                    <span class="card-action">Open mixer <span aria-hidden="true">&rarr;</span></span>
+                </a>
+
+                <a class="widget-card" href="color-game/">
+                    <span class="card-meta"><span class="status status--legacy">Legacy</span> Training game</span>
+                    <span class="card-title">Color Perception Game</span>
+                    <span class="card-copy">Compare two colors across the three CIELAB axes and reveal the transition.</span>
+                    <span class="card-action">Open game <span aria-hidden="true">&rarr;</span></span>
+                </a>
+            </div>
+        </section>
+
+        <section class="planned" aria-labelledby="planned-title">
+            <p class="eyebrow">On the workbench</p>
+            <h2 id="planned-title">Ratio Guesser</h2>
+            <p>A future widget whose interaction and scoring model are still being defined.</p>
+        </section>
+    </main>
 </body>
 </html>

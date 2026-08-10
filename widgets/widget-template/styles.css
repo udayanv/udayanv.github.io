@@ -1,0 +1,54 @@
+.widget-shell {
+  width: min(100% - 2 * var(--widget-space-5), var(--widget-content-max));
+  margin-inline: auto;
+  padding-block: var(--widget-space-7);
+}
+
+.widget-intro {
+  max-width: 46rem;
+  margin-bottom: var(--widget-space-6);
+}
+
+.eyebrow {
+  margin-bottom: var(--widget-space-2);
+  color: var(--widget-color-accent);
+  font-size: var(--widget-text-xs);
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin-bottom: var(--widget-space-3);
+  font-size: var(--widget-text-xl);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.widget-panel {
+  padding: clamp(var(--widget-space-5), 4vw, var(--widget-space-7));
+  border: 1px solid var(--widget-color-border);
+  border-radius: var(--widget-radius-md);
+  background: var(--widget-color-surface);
+}
+
+button {
+  min-height: var(--widget-control-min);
+  padding: var(--widget-space-3) var(--widget-space-5);
+  border: 1px solid var(--widget-color-accent);
+  border-radius: var(--widget-radius-sm);
+  color: #fff;
+  background: var(--widget-color-accent);
+  font-weight: 700;
+}
+
+button:hover {
+  background: var(--widget-color-accent-hover);
+}
+
+#example-status {
+  min-height: 1.5em;
+  margin-block: var(--widget-space-4) 0;
+  color: var(--widget-color-text-muted);
+}
+

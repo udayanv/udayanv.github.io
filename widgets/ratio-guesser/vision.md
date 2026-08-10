@@ -1,441 +1,167 @@
-MVP Design Document: Aspect Ratio Trainer
+# Ratio Guesser — Product Vision
 
-Vision
+## Vision
 
-Create a simple web application that trains one fundamental perceptual skill used in observational drawing:
+Create a small, static web application that trains a foundational observational-drawing skill: estimating an object's proportions independently of its absolute size.
 
-«Estimate the aspect ratio of an object independent of its size.»
+Each exercise presents a generated reference shape and a separate adjustable rectangle. The user uses one slider to scale one dimension of the adjustable rectangle until its proportions match the reference shape's intended bounding-box ratio. They then submit an answer and receive clear feedback.
 
-The application should be lightweight enough to run entirely as a static GitHub Pages site (HTML/CSS/JavaScript only).
+The first version uses geometric, programmatically generated shapes rather than image assets. This keeps every trial self-contained, makes the target ratio known exactly, and lets difficulty vary without an image-processing pipeline.
 
----
+## Learning Objective
 
-Learning Objective
+Develop the ability to estimate both:
 
-Develop the ability to accurately perceive:
+- height relative to width
+- width relative to height
 
-- height-to-width ratio
-- width-to-height ratio
+The exercise concerns the reference shape's local, unrotated bounding box: the smallest upright rectangle that contains the shape before any display rotation is applied. Users should learn to mentally recover that underlying envelope even when the visible shape is rotated or visually complex.
 
-This is one of the first measurements artists make when constructing a drawing, often by estimating the bounding box of a subject.
+The application intentionally does not train contour drawing, shading, perspective, or rendering. It isolates proportion estimation.
 
-The application intentionally does not train:
+## Core Interaction
 
-- drawing
-- contour accuracy
-- rendering
-- shading
-- perspective
+1. Generate a reference shape with a known local width and height.
+2. Optionally rotate that finished shape for display.
+3. Show an upright adjustable rectangle alongside it.
+4. Let the user move one slider to change the rectangle's variable dimension.
+5. On submission, reveal the target and estimated ratios and report error.
 
-It isolates one perceptual skill.
+Absolute scale is deliberately unimportant. The reference and adjustable shapes may be rendered at different overall sizes.
 
----
+## Ratio Convention
 
-Core Idea
+The canonical target ratio is:
 
-The user is shown a reference object.
+`height / width`
 
-They adjust a normalized rectangle until its aspect ratio matches the perceived aspect ratio of the reference.
+The adjustable rectangle has one fixed dimension and one slider-controlled dimension:
 
-Absolute size is removed from the problem.
+Its width is fixed and the slider changes only its height. The slider therefore directly represents the height ÷ width estimate. The UI should label the control plainly (for example, “Adjust height”), while feedback always shows height ÷ width so results remain comparable.
 
-The only parameter being estimated is
+For every mode, calculate the target from the shape's dimensions **before rotation**. Do not use the screen-space, axis-aligned bounding box after rotation.
 
-[
-\text{aspect ratio}
+## Shape Modes
 
-\frac{\text{height}}{\text{width}}.
-]
+Modes are distinct reference-shape families. A trial randomly generates dimensions and, where relevant, parameters within safe ranges so the silhouette remains legible.
 
----
+| Mode | Reference construction | Target ratio |
+| --- | --- | --- |
+| 1. Upright rectangle | An unrotated rectangle; the base calibration mode. | Rectangle height ÷ width. |
+| 2. Rotated rectangle | A rectangle created upright, then rotated for display. | Rectangle height ÷ width before rotation. |
+| 3. Plus sign | A centered vertical bar and horizontal bar, like a rectangle folded in half twice and represented by its folds. | Overall plus-sign height ÷ width. |
+| 4. Rotated plus sign | A centered plus sign created in local coordinates, then rotated for display. | Overall plus-sign height ÷ width before rotation. |
+| 5. Offset plus sign | Perpendicular horizontal and vertical bars whose intersection can be offset from their midpoints. | Overall local bounding-box height ÷ width. |
+| 6. Oval | An upright ellipse. | Ellipse major vertical extent ÷ horizontal extent. |
+| 7. Rotated oval | An ellipse created upright, then rotated for display. | Ellipse height ÷ width before rotation. |
+| 8. Arbitrary shape | A smooth, generated blob with a defined local bounding box. | Blob local bounding-box height ÷ width. |
 
-User Workflow
+### Mode Notes
 
-Step 1
+- The plus-sign modes should use filled bars of non-zero thickness, not one-pixel lines, so their envelopes read as shapes.
+- In the offset-plus mode, constrain offsets so the bars still intersect and the silhouette remains one connected shape.
+- “Upright” means the reference is not display-rotated; it does not require every generated rectangle to be taller than wide. Early presets may bias this mode toward taller shapes for a gentle introduction.
+- The arbitrary-shape mode is intentionally a later implementation milestone. Its generator must produce smooth, non-self-intersecting silhouettes and retain the source dimensions used to define its local bounding box.
 
-Display a reference object.
+## Rotation Rule
 
-Examples:
+Rotation is part of selected modes, not a separate measurement rule. Build every shape in its local coordinate system first, record its local width and height, and only then apply a display transform.
 
-- rectangle
-- silhouette
-- fruit
-- vase
-- bottle
-- head
+This rule matters especially for rotated rectangles and ovals: their visible, screen-aligned bounds change with angle, but the answer does not.
 
----
+## Interface
 
-Step 2
+The round should remain deliberately spare:
 
-Display an adjustable rectangle.
+- a manual mode selector
+- an Easy / Medium / Hard difficulty selector
+- a reference-shape panel
+- an adjustable-rectangle panel
+- one labeled slider
+- a submit button
+- a result area revealed after submission
+- a next-shape button
 
-The rectangle always has
+The adjustable rectangle always remains upright. The reference panel should not show guide boxes, dimensions, or numerical hints before submission. Render all references at a common, practical visual footprint; this keeps the task focused on proportion and is the simplest initial implementation.
 
-- fixed width = 1
+After submission, show an overlay that compares the true reference shape with the user's generated rectangle, together with the numerical ratios. The overlay should preserve the shapes' relative proportions while making their differing silhouettes understandable; it is explanatory feedback, not a second guessing interaction.
 
-The slider controls only
+## Feedback and Scoring
 
-- height
+Let `r` be the true ratio and `r̂` be the user's estimated ratio.
 
-Thus the slider directly controls aspect ratio.
+Calculate the canonical score with symmetric log-ratio error:
 
----
+`abs(ln(r̂ / r))`
 
-Step 3
+This treats equivalent multiplicative over- and under-estimates equally. For user-facing feedback, also report the familiar relative error:
 
-The user adjusts the slider until the rectangle matches the perceived aspect ratio of the reference.
+`abs(r - r̂) / r × 100%`
 
----
+After submission, show:
 
-Step 4
+- actual height ÷ width ratio
+- estimated height ÷ width ratio
+- relative error percentage
+- log-ratio score (optional in the interface, required for internal comparison and future adaptation)
+- a concise qualitative result (for example, “Very close”)
 
-Submit.
+Immediate feedback is the default for the initial implementation because calibration is the central learning goal.
 
-Reveal:
+## Randomization and Difficulty
 
-- actual ratio
-- estimated ratio
-- percent error
+Each generated trial should randomize its ratio over a bounded, useful range. Suggested initial range: `0.4` to `2.5` for height ÷ width. Avoid near-duplicate consecutive targets when repeatedly playing a mode.
 
-Optionally record results locally.
+The user selects a mode manually. A future **Random** mode may select among implemented shape modes, but it is not required for the first release.
 
----
+Difficulty controls slider granularity, not which visual reference is shown. All difficulty levels use the same fixed-width adjustable rectangle and ratio range:
 
-Interface
+| Difficulty | Slider behavior |
+| --- | --- |
+| Easy | Coarse discrete height steps; intended for early calibration. |
+| Medium | Smaller discrete steps. |
+| Hard | Fine discrete height steps for precise matching. |
 
-Reference
+The exact step counts and values should be selected during implementation so the full allowed ratio range remains reachable at every level. The visible slider should snap to these steps.
 
-     🍐
+Suggested learning progression across modes is:
 
+1. upright rectangles
+2. rotated rectangles and upright ovals
+3. plus signs and rotated ovals
+4. rotated and offset plus signs
+5. arbitrary smooth blobs
 
-Adjustable
+Future options may add timed viewing, Random/mixed-mode sessions, or adaptive mode suggestions based on recent log-ratio error. These should not complicate the one-slider interaction in the first release.
 
-████
-████
-████
+## Technology and Constraints
 
---------------------------
-Aspect Ratio Slider
---------------------------
+- HTML, CSS, and JavaScript only
+- Canvas or SVG for generated shapes
+- no backend or account system
+- static GitHub Pages deployment
+- no image assets or image-processing dependency for the generated-shape MVP
 
-          Submit
+## Progress Tracking
 
-No drawing.
+Optional browser-local statistics:
 
-No keyboard shortcuts required.
+- completed trials
+- average and median relative error
+- per-mode accuracy
+- recent-answer history
 
-One slider.
+No account is required; use local storage if progress tracking is implemented.
 
-One button.
+## Open Implementation Decisions
 
----
+1. **Slider mapping:** direct ratio values are simpler to explain; a logarithmic mapping may give more even sensitivity for tall and wide targets.
+2. **Rotation ranges:** define sensible angle ranges for the rotated modes, including whether near-upright angles should be excluded.
+3. **Slider steps:** choose the exact Easy, Medium, and Hard step sizes after trying the implemented interaction.
+4. **Blob generator:** specify a deterministic seeded algorithm and constraints for smoothness, connectedness, and local bounds. The shape-mode architecture should use a pluggable generator interface so this mode can remain unavailable until specified without affecting the other modes.
 
-Scoring
+## Guiding Principle
 
-Let
+One reference shape. One slider. One hidden proportion. One objective score.
 
-- r = true aspect ratio
-- \hat r = user's estimate
-
-Possible error metrics:
-
-Absolute error
-
-[
-|r-\hat r|
-]
-
-Relative error
-
-[
-\frac{|r-\hat r|}{r}
-]
-
-The MVP should report relative error.
-
-Example:
-
-Actual
-
-1.42
-
-Estimated
-
-1.35
-
-Relative error
-
-4.9%
-
----
-
-Reference Images
-
-Initial MVP should use a small curated dataset.
-
-Suggested categories:
-
-- geometric shapes
-- fruit
-- bottles
-- mugs
-- trees
-- animals
-- simple household objects
-
-Each image should have:
-
-- transparent background if possible
-- precomputed bounding box
-- known aspect ratio
-
-No image processing required in the MVP.
-
----
-
-Technology
-
-- HTML
-- CSS
-- JavaScript
-- Canvas (optional)
-
-No backend.
-
-No database.
-
-Deploy via GitHub Pages.
-
----
-
-Difficulty System
-
-Difficulty is controlled independently along two axes.
-
-Axis 1 — Rotation
-
-Purpose:
-
-Prevent users from relying on horizontal/vertical comparisons.
-
-Levels
-
-Level 0
-
-Reference upright.
-
-Level 1
-
-Random rotation
-
-±15°
-
-Level 2
-
-Random rotation
-
-±45°
-
-Level 3
-
-Random rotation
-
-0–360°
-
-The adjustable rectangle remains upright.
-
-The user must mentally estimate the object's envelope.
-
----
-
-Axis 2 — Observation Time
-
-Purpose:
-
-Shift from direct visual comparison toward perceptual memory.
-
-Levels
-
-Level 0
-
-Reference always visible.
-
-Level 1
-
-Reference disappears after
-
-10 seconds.
-
-Level 2
-
-Reference disappears after
-
-5 seconds.
-
-Level 3
-
-Reference disappears after
-
-2 seconds.
-
-Level 4
-
-Flash mode
-
-Reference shown for
-
-1 second.
-
-The adjustable rectangle remains visible.
-
----
-
-Difficulty Matrix
-
-The two axes are independent.
-
-Examples:
-
-Easy
-
-- Upright
-- Always visible
-
-Medium
-
-- Rotated
-- Always visible
-
-Medium
-
-- Upright
-- Five-second exposure
-
-Hard
-
-- Rotated
-- Five-second exposure
-
-Expert
-
-- Arbitrary rotation
-- One-second exposure
-
----
-
-Progress Tracking
-
-Optional local statistics:
-
-- average relative error
-- median relative error
-- best session
-- number of completed trials
-
-No accounts required.
-
-Use browser local storage.
-
----
-
-Future Extensions
-
-Potential future exercises built on the same interaction model:
-
-- angle estimation
-- ellipse eccentricity
-- bounding-box estimation for silhouettes
-- relative length estimation
-- feature placement within bounding boxes
-
-All use the same principle:
-
-Normalize away nuisance parameters and estimate one latent geometric quantity.
-
----
-
-Open Questions
-
-1. Reference Object
-
-Should the MVP begin with:
-
-- rectangles
-- silhouettes
-- photographs
-- simplified drawings
-
-Rectangles validate the interaction.
-
-Silhouettes are closer to real drawing.
-
----
-
-2. Bounding Box Definition
-
-Should the user estimate:
-
-- axis-aligned bounding box
-- minimum-area bounding box (rotates with the object)
-
-The latter is probably more relevant to drawing but requires more preprocessing.
-
----
-
-3. Slider Mapping
-
-Should the slider represent:
-
-- aspect ratio directly
-- logarithm of aspect ratio
-
-A logarithmic mapping provides equal sensitivity to tall and wide objects.
-
----
-
-4. Error Metric
-
-Possible options:
-
-- relative error
-- log-ratio error
-- percentage difference
-
-The metric should feel intuitive while remaining mathematically well-behaved.
-
----
-
-5. Immediate vs Delayed Feedback
-
-Should the answer appear immediately after each trial, or after completing a batch of 10–20 trials?
-
-Immediate feedback may improve calibration.
-
-Delayed feedback may encourage independent estimation.
-
-This should be evaluated experimentally.
-
----
-
-6. Difficulty Progression
-
-Should rotation and exposure time be:
-
-- selected manually
-- automatically increased as performance improves
-- randomized
-
-Adaptive difficulty could maintain an approximately constant success rate.
-
----
-
-Guiding Principle
-
-The application trains perceptual estimation, not drawing.
-
-Every exercise should isolate a single latent geometric quantity while removing irrelevant variables such as scale.
-
-The interaction should remain as simple as possible:
-
-One reference. One slider. One hidden parameter. One objective score.
+Every mode should preserve that simplicity while making the user judge the shape's local bounding box rather than its absolute scale or its rotated screen footprint.

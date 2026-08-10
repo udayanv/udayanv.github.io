@@ -1,21 +1,22 @@
 # Ratio Guesser
 
-A planned widget. Product scope, interaction, and implementation stack have not yet been defined.
+A planned aspect-ratio perception trainer for observational drawing. The user matches an adjustable normalized rectangle to a reference object, then receives the actual ratio, estimated ratio, and relative error.
 
 ## Status
 
-Concept only. There is no runnable entry point.
+MVP defined; implementation has not started. The current plan calls for a static HTML, CSS, and JavaScript widget with no backend.
 
-## Next documentation step
+## Product plan
 
-Before implementation, expand `vision.md` with:
+`vision.md` defines the learning objective, core interaction, scoring, reference-image requirements, two-axis difficulty system, optional local progress, and future extensions.
 
-- the real-world task and intended audience;
-- what the user sees, changes, and submits;
-- how an answer is generated and evaluated;
-- expected input ranges and edge cases;
-- accessibility and responsive requirements;
-- whether results or settings persist.
+Before implementation, resolve the remaining MVP choices recorded there:
 
-Once the scope is small and clear, copy `widget-template/` for a zero-build implementation or document the chosen toolchain here.
+- initial reference type;
+- bounding-box definition;
+- direct or logarithmic slider mapping;
+- final error metric presentation;
+- immediate or delayed feedback;
+- manual, automatic, or randomized difficulty progression.
 
+Once those choices are settled, copy `widget-template/` and retain the zero-build stack specified by the plan.

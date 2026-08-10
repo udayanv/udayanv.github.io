@@ -1,6 +1,6 @@
 # Color Perception Trainer — Project Plan
 
-> This is the active design and implementation plan. Preserve `designDoc.md` unchanged as the original reference.
+> This is the active design and implementation plan. Preserve `archive/original-product-plan.md` unchanged as the original reference.
 
 ## 1. Project Summary
 
@@ -332,7 +332,7 @@ The final source/result pair and every distractor prediction must be evaluated a
 - 2026-08-01 — Defined operational neutrality and initial R2/R3 difficulty bands; added shared Auto/Easy/Medium/Hard controls and progress requirements.
 - 2026-08-01 — Added a sequenced architecture plan separating prerequisites for R2/R3 from improvements that can follow exercise-domain work.
 - 2026-08-01 — Standardized Palette Reference ordering so each color family is shown cool first, then warm.
-- 2026-07-31 — Created the active project plan; preserved `designDoc.md` as the unchanged reference.
+- 2026-07-31 — Created the active project plan; the original reference is preserved at `archive/original-product-plan.md`.
 - 2026-07-31 — Set the primary audience to beginners and added the six-primary Palette Reference.
 - 2026-07-31 — Selected free play and a modular exercise-selection screen.
 - 2026-07-31 — Locked R1 to Relative Shift, reserving Hidden Undertone (R2) and Mix a Color (R3).

@@ -1,4 +1,4 @@
-Read and follow the [design document](designDoc-v2.md) as the authoritative project plan. Do not modify any files inside ArchivedDocs.
+Read and follow the [product plan](product-plan.md) as the authoritative project plan. Do not modify files inside `archive/`.
 
 Build the R1 Color Perception Trainer page in this repository. Implement the complete beginner-friendly free-play experience specified in the plan:
 

@@ -1,0 +1,66 @@
+{
+  "$schema": "./widgets.schema.json",
+  "widgets": [
+    {
+      "slug": "color-perception-trainer",
+      "legacySlugs": ["color-game-v2"],
+      "name": "Color Perception Trainer",
+      "summary": "Practice lightness, chroma, and hidden undertones with guided color comparisons.",
+      "status": "active",
+      "statusLabel": "Active",
+      "category": "Learning tool",
+      "stack": "React, TypeScript, Vite",
+      "entryPoint": "src/main.tsx",
+      "catalog": {
+        "featured": true,
+        "order": 1,
+        "action": "Open trainer"
+      }
+    },
+    {
+      "slug": "color-mixer",
+      "name": "Color Mixer",
+      "summary": "Move between RGB, paint-style RYB, and hue-value-chroma controls.",
+      "status": "available",
+      "statusLabel": "Available",
+      "category": "Utility",
+      "stack": "HTML, CSS, JavaScript",
+      "entryPoint": "index.html",
+      "catalog": {
+        "featured": false,
+        "order": 2,
+        "action": "Open mixer"
+      }
+    },
+    {
+      "slug": "color-game",
+      "name": "Color Perception Game",
+      "summary": "Compare two colors across the three CIELAB axes and reveal the transition.",
+      "status": "legacy",
+      "statusLabel": "Available, legacy",
+      "category": "Training game",
+      "stack": "HTML, CSS, JavaScript",
+      "entryPoint": "index.html",
+      "catalog": {
+        "featured": false,
+        "order": 3,
+        "action": "Open game"
+      }
+    },
+    {
+      "slug": "ratio-guesser",
+      "name": "Ratio Guesser",
+      "summary": "Train aspect-ratio estimation while removing absolute size from the problem.",
+      "status": "planned",
+      "statusLabel": "Planned",
+      "category": "Perception trainer",
+      "stack": "HTML, CSS, JavaScript",
+      "entryPoint": null,
+      "catalog": {
+        "featured": false,
+        "order": 4,
+        "action": null
+      }
+    }
+  ]
+}

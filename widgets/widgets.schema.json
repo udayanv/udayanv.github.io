@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://udayanv.github.io/widgets/widgets.schema.json",
+  "title": "Widget registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["widgets"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "widgets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/widget" }
+    }
+  },
+  "$defs": {
+    "widget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "summary", "status", "statusLabel", "category", "stack", "entryPoint", "catalog"],
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "legacySlugs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["active", "available", "legacy", "planned"] },
+        "statusLabel": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "stack": { "type": "string", "minLength": 1 },
+        "entryPoint": { "type": ["string", "null"] },
+        "catalog": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["featured", "order", "action"],
+          "properties": {
+            "featured": { "type": "boolean" },
+            "order": { "type": "integer", "minimum": 1 },
+            "action": { "type": ["string", "null"] }
+          }
+        }
+      }
+    }
+  }
+}

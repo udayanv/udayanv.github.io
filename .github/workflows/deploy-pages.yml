@@ -33,24 +33,30 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: widgets/color-game-v2/pnpm-lock.yaml
+          cache-dependency-path: widgets/color-perception-trainer/pnpm-lock.yaml
 
-      - name: Install color game dependencies
-        working-directory: widgets/color-game-v2
+      - name: Verify widget catalog
+        working-directory: widgets
+        run: |
+          node scripts/sync-widget-catalog.mjs
+          git diff --exit-code -- README.md index.html
+
+      - name: Install color trainer dependencies
+        working-directory: widgets/color-perception-trainer
         run: pnpm install --frozen-lockfile
 
-      - name: Test color game
-        working-directory: widgets/color-game-v2
+      - name: Test color trainer
+        working-directory: widgets/color-perception-trainer
         run: pnpm test
 
-      - name: Build color game
-        working-directory: widgets/color-game-v2
+      - name: Build color trainer
+        working-directory: widgets/color-perception-trainer
         run: pnpm build
 
-      - name: Preserve compiled color game
+      - name: Preserve compiled color trainer
         run: |
-          mkdir -p "$RUNNER_TEMP/color-game-v2"
-          cp -R widgets/color-game-v2/dist/. "$RUNNER_TEMP/color-game-v2/"
+          mkdir -p "$RUNNER_TEMP/color-perception-trainer"
+          cp -R widgets/color-perception-trainer/dist/. "$RUNNER_TEMP/color-perception-trainer/"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
@@ -61,12 +67,12 @@ jobs:
           source: ./
           destination: ./_site
 
-      - name: Add compiled color game to site
+      - name: Add compiled color trainer to site
         run: |
           sudo chown -R "$(id -u):$(id -g)" _site
-          rm -rf _site/widgets/color-game-v2
-          mkdir -p _site/widgets/color-game-v2
-          cp -R "$RUNNER_TEMP/color-game-v2/." _site/widgets/color-game-v2/
+          rm -rf _site/widgets/color-perception-trainer
+          mkdir -p _site/widgets/color-perception-trainer
+          cp -R "$RUNNER_TEMP/color-perception-trainer/." _site/widgets/color-perception-trainer/
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v5

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Practice estimating the height-to-width ratio of rectangles and plus signs.">
+    <title>Ratio Guesser</title>
+    <link rel="stylesheet" href="../shared/styles/tokens.css">
+    <link rel="stylesheet" href="../shared/styles/base.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="widget-shell">
+      <header class="widget-intro">
+        <p class="eyebrow">Drawing perception</p>
+        <h1>Ratio Guesser</h1>
+        <p class="lede">Match the reference shape’s height-to-width ratio.</p>
+        <p class="reminder">Rotation does not change the answer.</p>
+      </header>
+
+      <section class="widget-panel" aria-labelledby="workspace-title">
+        <div class="workspace-heading">
+          <div>
+            <p class="step-label">One shape. One hidden proportion.</p>
+            <h2 id="workspace-title">Build your estimate</h2>
+          </div>
+          <p class="ratio-key"><span aria-hidden="true">H ÷ W</span><span class="sr-only">Height divided by width</span></p>
+        </div>
+
+        <div class="control-grid" aria-label="Round settings">
+          <label class="field">
+            <span>Target object</span>
+            <select id="target-object">
+              <option value="rectangle">Rectangle</option>
+              <option value="plus">Plus sign</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Your object</span>
+            <select id="user-object">
+              <option value="rectangle">Rectangle</option>
+              <option value="plus">Plus sign</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Difficulty</span>
+            <select id="difficulty">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="exercise-grid">
+          <section class="shape-panel" aria-labelledby="target-title">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">Reference</p>
+                <h3 id="target-title">Target</h3>
+              </div>
+              <span class="status-chip">Hidden ratio</span>
+            </div>
+            <canvas id="target-canvas" class="shape-canvas" role="img"></canvas>
+          </section>
+
+          <section class="shape-panel estimate-panel" aria-labelledby="estimate-title">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">Adjustable</p>
+                <h3 id="estimate-title">Your estimate</h3>
+              </div>
+              <output id="ratio-value" class="ratio-value" for="ratio-slider">1.00</output>
+            </div>
+            <canvas id="user-canvas" class="shape-canvas" role="img"></canvas>
+          </section>
+        </div>
+
+        <div class="answer-controls">
+          <div class="slider-copy">
+            <label for="ratio-slider">Adjust height</label>
+            <span>Width stays fixed</span>
+          </div>
+          <input id="ratio-slider" type="range" min="0.4" max="2.5" step="0.05" value="1" aria-describedby="slider-description">
+          <p id="slider-description" class="range-labels"><span>Wider · 0.40</span><span>Taller · 2.50</span></p>
+          <div class="actions">
+            <button id="submit-button" type="button">Submit estimate</button>
+            <button id="next-button" class="secondary-button" type="button" hidden>Next shape</button>
+          </div>
+        </div>
+
+        <section id="result" class="result" aria-labelledby="result-title" hidden>
+          <div class="result-copy" role="status" aria-live="polite" aria-atomic="true">
+            <p class="panel-kicker">Result</p>
+            <h2 id="result-title">Your calibration</h2>
+            <p id="result-label" class="result-label"></p>
+            <dl class="score-grid">
+              <div><dt>Target ratio</dt><dd id="target-score"></dd></div>
+              <div><dt>Your ratio</dt><dd id="user-score"></dd></div>
+              <div><dt>Relative error</dt><dd id="error-score"></dd></div>
+            </dl>
+          </div>
+          <div class="comparison-wrap">
+            <h3>Target vs. your estimate</h3>
+            <canvas id="comparison-canvas" class="comparison-canvas" role="img"></canvas>
+            <div class="legend" aria-hidden="true">
+              <span><i class="target-swatch"></i>Target</span>
+              <span><i class="estimate-swatch"></i>Your estimate</span>
+            </div>
+            <p class="comparison-note">Both shapes use the same width, so the height difference shows your error.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

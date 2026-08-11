@@ -3,9 +3,10 @@
 const RATIO_MIN = 0.4;
 const RATIO_MAX = 2.5;
 const INITIAL_RATIO = 1;
-const TARGET_LOCAL_WIDTH = 160;
+const TARGET_LOCAL_WIDTH_MIN = 110;
+const TARGET_LOCAL_WIDTH_MAX = 210;
 const USER_LOCAL_WIDTH = 120;
-const MIN_REPEAT_DISTANCE = 0.18;
+const MIN_REPEAT_LOG_DISTANCE = Math.log(1.18);
 
 const DIFFICULTY_STEPS = Object.freeze({
   easy: 0.1,
@@ -115,17 +116,26 @@ function randomBetween(minimum, maximum) {
   return minimum + Math.random() * (maximum - minimum);
 }
 
+function randomBoolean() {
+  return Math.random() < 0.5;
+}
+
+function createBalancedTargetRatio() {
+  const magnitude = randomBetween(1, RATIO_MAX);
+  return randomBoolean() ? magnitude : 1 / magnitude;
+}
+
 function generateTargetRatio(objectId) {
   const previousRatio = previousTargetRatios.get(objectId);
   let ratio;
   let attempts = 0;
 
   do {
-    ratio = randomBetween(RATIO_MIN, RATIO_MAX);
+    ratio = createBalancedTargetRatio();
     attempts += 1;
   } while (
     previousRatio !== undefined
-    && Math.abs(ratio - previousRatio) < MIN_REPEAT_DISTANCE
+    && Math.abs(Math.log(ratio / previousRatio)) < MIN_REPEAT_LOG_DISTANCE
     && attempts < 24
   );
 
@@ -136,9 +146,10 @@ function generateTargetRatio(objectId) {
 function generateRound(objectId) {
   const definition = SHAPE_DEFINITIONS[objectId];
   const generatedRatio = generateTargetRatio(objectId);
+  const generatedWidth = Math.round(randomBetween(TARGET_LOCAL_WIDTH_MIN, TARGET_LOCAL_WIDTH_MAX));
   const geometry = definition.createGeometry({
-    width: TARGET_LOCAL_WIDTH,
-    height: TARGET_LOCAL_WIDTH * generatedRatio,
+    width: generatedWidth,
+    height: generatedWidth * generatedRatio,
   });
 
   return Object.freeze({
@@ -208,7 +219,10 @@ function fitScale(geometry, canvasWidth, canvasHeight, padding) {
 function drawTarget() {
   const { context, width, height } = fitCanvas(elements.targetCanvas);
   const definition = SHAPE_DEFINITIONS[state.round.objectId];
-  const scale = fitScale(state.round.geometry, width, height, Math.min(width, height) * 0.13);
+  const scale = Math.min(
+    1,
+    fitScale(state.round.geometry, width, height, Math.min(width, height) * 0.13),
+  );
 
   drawShape(context, definition, state.round.geometry, {
     centerX: width / 2,

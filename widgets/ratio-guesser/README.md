@@ -8,7 +8,7 @@ MVP defined; implementation has not started. The current plan calls for a static
 
 ## Product plan
 
-`vision.md` defines the learning objective, one-slider interaction, local-bounding-box ratio rule, eight generated-shape modes, scoring, optional local progress, and future extensions.
+`vision.md` defines the learning objective, one-slider interaction, local-bounding-box ratio rule, independently selected target and user objects, staged object-class rollout, scoring, optional local progress, and future extensions.
 
 `DESIGN_HANDOFF.md` translates the approved MVP into implementation requirements, including the shipped modes, generator contract, slider values, interaction states, accessibility expectations, and acceptance criteria.
 

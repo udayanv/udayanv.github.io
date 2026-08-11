@@ -24,7 +24,7 @@ widgets/
 ├── color-perception-trainer/  React color perception trainer
 ├── color-game-v2/             Compatibility redirect for the former URL
 ├── color-mixer/               Zero-build color conversion tool
-└── ratio-guesser/             Planned widget; documentation only
+└── ratio-guesser/             Static aspect-ratio perception trainer
 ```
 
 ## Widget catalog
@@ -35,7 +35,7 @@ widgets/
 | [Color Perception Trainer](color-perception-trainer/) | Active | React, TypeScript, Vite | `color-perception-trainer/src/main.tsx` |
 | [Color Mixer](color-mixer/) | Available | HTML, CSS, JavaScript | `color-mixer/index.html` |
 | [Color Perception Game](color-game/) | Available, legacy | HTML, CSS, JavaScript | `color-game/index.html` |
-| Ratio Guesser | Planned | HTML, CSS, JavaScript | No runnable entry point |
+| [Ratio Guesser](ratio-guesser/) | Available | HTML, CSS, JavaScript | `ratio-guesser/index.html` |
 <!-- widgets:table:end -->
 
 “Legacy” describes the first implementation, not a broken or deprecated URL. The trainer is the newer, broader successor.

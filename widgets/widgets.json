@@ -51,15 +51,15 @@
       "slug": "ratio-guesser",
       "name": "Ratio Guesser",
       "summary": "Train aspect-ratio estimation while removing absolute size from the problem.",
-      "status": "planned",
-      "statusLabel": "Planned",
+      "status": "available",
+      "statusLabel": "Available",
       "category": "Perception trainer",
       "stack": "HTML, CSS, JavaScript",
-      "entryPoint": null,
+      "entryPoint": "index.html",
       "catalog": {
         "featured": false,
         "order": 4,
-        "action": null
+        "action": "Open trainer"
       }
     }
   ]

@@ -2,16 +2,15 @@
 
 const RATIO_MIN = 0.4;
 const RATIO_MAX = 2.5;
-const INITIAL_RATIO = 1;
 const TARGET_LOCAL_WIDTH_MIN = 110;
 const TARGET_LOCAL_WIDTH_MAX = 210;
 const USER_LOCAL_WIDTH = 120;
-const MIN_REPEAT_LOG_DISTANCE = Math.log(1.18);
+const MIN_REPEAT_GRID_DISTANCE = 2;
 
-const DIFFICULTY_STEPS = Object.freeze({
-  easy: 0.1,
-  medium: 0.05,
-  hard: 0.01,
+const DIFFICULTY_MAX_TERMS = Object.freeze({
+  easy: 5,
+  medium: 8,
+  hard: 12,
 });
 
 const RESULT_BANDS = Object.freeze([
@@ -27,6 +26,44 @@ const COLORS = Object.freeze({
   userOverlay: "rgba(210, 116, 67, 0.34)",
   userOutline: "#9a4f29",
 });
+
+function greatestCommonDivisor(first, second) {
+  let a = first;
+  let b = second;
+
+  while (b !== 0) {
+    [a, b] = [b, a % b];
+  }
+
+  return a;
+}
+
+function createNaturalRatioGrid(maximumTerm) {
+  const ratios = [];
+
+  for (let numerator = 1; numerator <= maximumTerm; numerator += 1) {
+    for (let denominator = 1; denominator <= maximumTerm; denominator += 1) {
+      const value = numerator / denominator;
+      if (
+        greatestCommonDivisor(numerator, denominator) === 1
+        && value >= RATIO_MIN
+        && value <= RATIO_MAX
+      ) {
+        ratios.push(Object.freeze({ numerator, denominator, value }));
+      }
+    }
+  }
+
+  ratios.sort((first, second) => first.value - second.value);
+  return Object.freeze(ratios);
+}
+
+const RATIO_GRIDS = Object.freeze(Object.fromEntries(
+  Object.entries(DIFFICULTY_MAX_TERMS).map(([difficulty, maximumTerm]) => [
+    difficulty,
+    createNaturalRatioGrid(maximumTerm),
+  ]),
+));
 
 function rectangleGeometry({ width, height }) {
   return Object.freeze({ width, height });
@@ -101,14 +138,15 @@ const elements = {
   comparisonCanvas: document.querySelector("#comparison-canvas"),
 };
 
-const previousTargetRatios = new Map();
+const previousTargetIndices = new Map();
 
 const state = {
   selectedTargetObject: elements.targetObject.value,
   selectedUserObject: elements.userObject.value,
   difficulty: elements.difficulty.value,
   round: null,
-  estimateRatio: INITIAL_RATIO,
+  estimateRatioIndex: 0,
+  estimateRatio: 1,
   submitted: false,
 };
 
@@ -116,40 +154,49 @@ function randomBetween(minimum, maximum) {
   return minimum + Math.random() * (maximum - minimum);
 }
 
-function randomBoolean() {
-  return Math.random() < 0.5;
+function randomIndex(length) {
+  return Math.floor(randomBetween(0, length));
 }
 
-function createBalancedTargetRatio() {
-  const magnitude = randomBetween(1, RATIO_MAX);
-  return randomBoolean() ? magnitude : 1 / magnitude;
+function getRatioGrid(difficulty = state.difficulty) {
+  return RATIO_GRIDS[difficulty];
 }
 
-function generateTargetRatio(objectId) {
-  const previousRatio = previousTargetRatios.get(objectId);
-  let ratio;
+function getEstimateRatioDefinition() {
+  return getRatioGrid()[state.estimateRatioIndex];
+}
+
+function formatRatioDefinition(ratioDefinition) {
+  return `${ratioDefinition.value.toFixed(2)} · ${ratioDefinition.numerator}:${ratioDefinition.denominator}`;
+}
+
+function generateTargetRatioDefinition(objectId, difficulty) {
+  const grid = getRatioGrid(difficulty);
+  const historyKey = `${objectId}:${difficulty}`;
+  const previousIndex = previousTargetIndices.get(historyKey);
+  let index;
   let attempts = 0;
 
   do {
-    ratio = createBalancedTargetRatio();
+    index = randomIndex(grid.length);
     attempts += 1;
   } while (
-    previousRatio !== undefined
-    && Math.abs(Math.log(ratio / previousRatio)) < MIN_REPEAT_LOG_DISTANCE
+    previousIndex !== undefined
+    && Math.abs(index - previousIndex) < MIN_REPEAT_GRID_DISTANCE
     && attempts < 24
   );
 
-  previousTargetRatios.set(objectId, ratio);
-  return ratio;
+  previousTargetIndices.set(historyKey, index);
+  return grid[index];
 }
 
-function generateRound(objectId) {
+function generateRound(objectId, difficulty) {
   const definition = SHAPE_DEFINITIONS[objectId];
-  const generatedRatio = generateTargetRatio(objectId);
+  const ratioDefinition = generateTargetRatioDefinition(objectId, difficulty);
   const generatedWidth = Math.round(randomBetween(TARGET_LOCAL_WIDTH_MIN, TARGET_LOCAL_WIDTH_MAX));
   const geometry = definition.createGeometry({
     width: generatedWidth,
-    height: generatedWidth * generatedRatio,
+    height: generatedWidth * ratioDefinition.value,
   });
 
   return Object.freeze({
@@ -157,6 +204,7 @@ function generateRound(objectId) {
     localWidth: geometry.width,
     localHeight: geometry.height,
     rotationDegrees: 0,
+    ratioDefinition,
     geometry,
   });
 }
@@ -280,15 +328,28 @@ function drawComparison() {
 function updateCanvasLabels() {
   const targetLabel = SHAPE_DEFINITIONS[state.round.objectId].label;
   const userLabel = SHAPE_DEFINITIONS[state.selectedUserObject].label;
+  const targetRatioDefinition = state.round.ratioDefinition;
+  const estimateRatioDefinition = getEstimateRatioDefinition();
   elements.targetCanvas.setAttribute(
     "aria-label",
     state.submitted
-      ? `Reference shape: ${targetLabel}. Target height-to-width ratio ${getTargetRatio().toFixed(2)}.`
+      ? `Reference shape: ${targetLabel}. Target height-to-width ratio ${targetRatioDefinition.value.toFixed(2)}, ${targetRatioDefinition.numerator} to ${targetRatioDefinition.denominator}.`
       : `Reference shape: ${targetLabel}. Estimate its height-to-width ratio.`,
   );
   elements.userCanvas.setAttribute(
     "aria-label",
-    `${userLabel} estimate with height-to-width ratio ${state.estimateRatio.toFixed(2)}.`,
+    `${userLabel} estimate with height-to-width ratio ${estimateRatioDefinition.value.toFixed(2)}, ${estimateRatioDefinition.numerator} to ${estimateRatioDefinition.denominator}.`,
+  );
+}
+
+function updateRatioValue() {
+  const ratioDefinition = getEstimateRatioDefinition();
+  const formattedRatio = formatRatioDefinition(ratioDefinition);
+  elements.ratioValue.value = formattedRatio;
+  elements.ratioValue.textContent = formattedRatio;
+  elements.slider.setAttribute(
+    "aria-valuetext",
+    `${ratioDefinition.value.toFixed(2)}, ratio ${ratioDefinition.numerator} to ${ratioDefinition.denominator}`,
   );
 }
 
@@ -300,8 +361,12 @@ function updateDebugSnapshot() {
     localWidth: state.round.localWidth,
     localHeight: state.round.localHeight,
     targetRatio: getTargetRatio(),
+    targetFraction: `${state.round.ratioDefinition.numerator}/${state.round.ratioDefinition.denominator}`,
     rotationDegrees: state.round.rotationDegrees,
+    estimateRatioIndex: state.estimateRatioIndex,
     estimateRatio: state.estimateRatio,
+    estimateFraction: `${getEstimateRatioDefinition().numerator}/${getEstimateRatioDefinition().denominator}`,
+    gridLength: getRatioGrid().length,
     userWidth: getUserGeometry().width,
     userHeight: getUserGeometry().height,
     submitted: state.submitted,
@@ -313,8 +378,7 @@ function renderAnsweringState() {
   elements.submitButton.hidden = false;
   elements.nextButton.hidden = true;
   elements.result.hidden = true;
-  elements.ratioValue.value = state.estimateRatio.toFixed(2);
-  elements.ratioValue.textContent = state.estimateRatio.toFixed(2);
+  updateRatioValue();
   updateCanvasLabels();
   updateDebugSnapshot();
   drawTarget();
@@ -322,13 +386,18 @@ function renderAnsweringState() {
 }
 
 function startRound() {
-  state.round = generateRound(state.selectedTargetObject);
-  state.estimateRatio = INITIAL_RATIO;
+  const grid = getRatioGrid();
+  const squareIndex = grid.findIndex((ratioDefinition) => (
+    ratioDefinition.numerator === 1 && ratioDefinition.denominator === 1
+  ));
+  state.round = generateRound(state.selectedTargetObject, state.difficulty);
+  state.estimateRatioIndex = squareIndex;
+  state.estimateRatio = grid[squareIndex].value;
   state.submitted = false;
-  elements.slider.min = String(RATIO_MIN);
-  elements.slider.max = String(RATIO_MAX);
-  elements.slider.step = String(DIFFICULTY_STEPS[state.difficulty]);
-  elements.slider.value = String(INITIAL_RATIO);
+  elements.slider.min = "0";
+  elements.slider.max = String(grid.length - 1);
+  elements.slider.step = "1";
+  elements.slider.value = String(squareIndex);
   renderAnsweringState();
 }
 
@@ -346,17 +415,19 @@ function submitEstimate() {
 
   state.submitted = true;
   const score = scoreRound();
+  const targetRatioDefinition = state.round.ratioDefinition;
+  const estimateRatioDefinition = getEstimateRatioDefinition();
   elements.slider.disabled = true;
   elements.submitButton.hidden = true;
   elements.nextButton.hidden = false;
   elements.resultLabel.textContent = score.qualitativeResult;
-  elements.targetScore.textContent = `H ÷ W = ${score.targetRatio.toFixed(2)}`;
-  elements.userScore.textContent = `H ÷ W = ${state.estimateRatio.toFixed(2)}`;
+  elements.targetScore.textContent = `H ÷ W = ${formatRatioDefinition(targetRatioDefinition)}`;
+  elements.userScore.textContent = `H ÷ W = ${formatRatioDefinition(estimateRatioDefinition)}`;
   elements.errorScore.textContent = `${score.relativeErrorPercent.toFixed(1)}%`;
   elements.result.hidden = false;
   elements.comparisonCanvas.setAttribute(
     "aria-label",
-    `Overlay comparison. Target ratio ${score.targetRatio.toFixed(2)}. Your ratio ${state.estimateRatio.toFixed(2)}. Relative error ${score.relativeErrorPercent.toFixed(1)} percent.`,
+    `Overlay comparison. Target ratio ${targetRatioDefinition.value.toFixed(2)}, ${targetRatioDefinition.numerator} to ${targetRatioDefinition.denominator}. Your ratio ${estimateRatioDefinition.value.toFixed(2)}, ${estimateRatioDefinition.numerator} to ${estimateRatioDefinition.denominator}. Relative error ${score.relativeErrorPercent.toFixed(1)} percent.`,
   );
   updateCanvasLabels();
   updateDebugSnapshot();
@@ -379,9 +450,9 @@ elements.targetObject.addEventListener("change", handleSettingsChange);
 elements.userObject.addEventListener("change", handleSettingsChange);
 elements.difficulty.addEventListener("change", handleSettingsChange);
 function updateEstimateFromSlider() {
-  state.estimateRatio = Number(elements.slider.value);
-  elements.ratioValue.value = state.estimateRatio.toFixed(2);
-  elements.ratioValue.textContent = state.estimateRatio.toFixed(2);
+  state.estimateRatioIndex = Number(elements.slider.value);
+  state.estimateRatio = getEstimateRatioDefinition().value;
+  updateRatioValue();
   updateCanvasLabels();
   updateDebugSnapshot();
   drawUser();
@@ -400,12 +471,11 @@ elements.slider.addEventListener("keydown", (event) => {
   if (!direction) return;
 
   event.preventDefault();
-  const step = DIFFICULTY_STEPS[state.difficulty];
-  const nextValue = Math.min(
-    RATIO_MAX,
-    Math.max(RATIO_MIN, state.estimateRatio + direction * step),
+  const nextIndex = Math.min(
+    getRatioGrid().length - 1,
+    Math.max(0, state.estimateRatioIndex + direction),
   );
-  elements.slider.value = nextValue.toFixed(2);
+  elements.slider.value = String(nextIndex);
   updateEstimateFromSlider();
 });
 elements.submitButton.addEventListener("click", submitEstimate);
@@ -431,7 +501,7 @@ window.ratioGuesserDebug = Object.freeze({
     };
   },
   shapeDefinitions: SHAPE_DEFINITIONS,
-  difficultySteps: DIFFICULTY_STEPS,
+  ratioGrids: RATIO_GRIDS,
 });
 
 startRound();

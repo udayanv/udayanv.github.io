@@ -140,7 +140,7 @@ select {
 }
 
 .ratio-value {
-  min-width: 4.3rem;
+  min-width: 7.6rem;
   color: var(--widget-color-accent);
   background: var(--widget-color-accent-soft);
   font-family: var(--widget-font-mono);

@@ -171,11 +171,11 @@ Optional browser-local statistics:
 
 No account is required; use local storage if progress tracking is implemented.
 
-## Open Implementation Decisions
+## Implementation Decisions
 
-1. **Slider mapping:** direct ratio values are simpler to explain; a logarithmic mapping may give more even sensitivity for tall and wide targets.
-2. **Rotation ranges:** define sensible angle ranges for future rotated target classes, including whether near-upright angles should be excluded.
-3. **Slider steps:** choose the exact Easy, Medium, and Hard step sizes after trying the implemented interaction.
+1. **Slider mapping:** use an integer slider index into the active natural-ratio grid; display and announce the represented ratio rather than the index.
+2. **Natural-ratio grids:** use reduced fractions within `0.4–2.5`. Easy, Medium, and Hard allow numerator and denominator terms up to 5, 8, and 12 respectively. Generate targets from the active grid so every answer is reachable.
+3. **Rotation ranges:** define sensible angle ranges for future rotated target classes, including whether near-upright angles should be excluded.
 4. **Blob generator:** specify a deterministic seeded algorithm and constraints for smoothness, connectedness, and local bounds. The shape-mode architecture should use a pluggable generator interface so this mode can remain unavailable until specified without affecting the other modes.
 
 ## Guiding Principle

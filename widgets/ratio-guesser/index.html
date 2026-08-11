@@ -71,7 +71,7 @@
                 <p class="panel-kicker">Adjustable</p>
                 <h3 id="estimate-title">Your estimate</h3>
               </div>
-              <output id="ratio-value" class="ratio-value" for="ratio-slider">1.00</output>
+              <output id="ratio-value" class="ratio-value" for="ratio-slider">1.00 · 1:1</output>
             </div>
             <canvas id="user-canvas" class="shape-canvas" role="img"></canvas>
           </section>
@@ -82,8 +82,8 @@
             <label for="ratio-slider">Adjust height</label>
             <span>Width stays fixed</span>
           </div>
-          <input id="ratio-slider" type="range" min="0.4" max="2.5" step="0.05" value="1" aria-describedby="slider-description">
-          <p id="slider-description" class="range-labels"><span>Wider · 0.40</span><span>Taller · 2.50</span></p>
+          <input id="ratio-slider" type="range" min="0" max="26" step="1" value="13" aria-valuetext="1.00, ratio 1 to 1" aria-describedby="slider-description">
+          <p id="slider-description" class="range-labels"><span>Wider · 0.40 · 2:5</span><span>Taller · 2.50 · 5:2</span></p>
           <div class="actions">
             <button id="submit-button" type="button">Submit estimate</button>
             <button id="next-button" class="secondary-button" type="button" hidden>Next shape</button>

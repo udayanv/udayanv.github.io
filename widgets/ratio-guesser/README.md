@@ -4,7 +4,7 @@ An aspect-ratio perception trainer for observational drawing. Match an adjustabl
 
 ## Status
 
-Initial rollout implemented with rectangle and plus-sign target/user pairings, three slider granularities, immediate scoring, and an explanatory overlay.
+Initial rollout implemented with rectangle and plus-sign target/user pairings, nested natural-ratio difficulty grids, decimal and fraction feedback, immediate scoring, and an explanatory overlay.
 
 ## Product plan
 

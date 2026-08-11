@@ -93,7 +93,7 @@ Place the two panels side-by-side on wide screens and vertically stacked on narr
 ### Input and Actions
 
 - Label the slider **Adjust height**.
-- Add a live text value such as `Your ratio: 1.20` that updates as the slider moves. It must not display the target value.
+- Add a live text value such as `1.25 · 5:4` that updates as the slider moves. Show both the decimal and whole-number ratio, but do not display the target value.
 - Provide a primary **Submit estimate** button.
 - Before submission, no score or answer is visible.
 - After submission, replace or supplement the primary action with **Next shape**.
@@ -194,7 +194,7 @@ Because a rotated shape can have a larger screen footprint than its local dimens
 
 ## Slider and Difficulty
 
-Use a direct-ratio native range slider. This is the most transparent MVP mapping: the slider value equals `estimateRatio`.
+Use a native range slider whose integer value indexes the active natural-ratio grid. Display and announce the ratio represented by that index rather than the index itself.
 
 Shared bounds:
 
@@ -203,15 +203,15 @@ const RATIO_MIN = 0.4;
 const RATIO_MAX = 2.5;
 ```
 
-Initial granularity defaults (centralize these constants so visual playtesting can revise them):
+Define a natural ratio as a reduced fraction whose numerator and denominator are small positive whole numbers. Keep only ratios within the shared bounds and sort them numerically. Difficulty controls the largest allowed numerator or denominator:
 
-| Difficulty | `step` |
-| --- | --- |
-| Easy | `0.10` |
-| Medium | `0.05` |
-| Hard | `0.01` |
+| Difficulty | Maximum fraction term | Grid size |
+| --- | --- | --- |
+| Easy | `5` | 13 ratios |
+| Medium | `8` | 27 ratios |
+| Hard | `12` | 57 ratios |
 
-Because `2.5 - 0.4` is divisible by each step above, every difficulty reaches both endpoints. Initialize each new round at `1.00`, snapped to the active step. Use a range input with matching `min`, `max`, and `step`; do not simulate discrete stepping with pixel positions.
+Each harder grid contains every ratio from the easier grids and adds more complex proportions. Reciprocal pairs must both be present. Generate the target directly from the active grid so every answer is exactly reachable. Initialize each new round at `1.00 · 1:1`. Set the range input to `min = 0`, `max = grid.length - 1`, and `step = 1`, and provide the represented decimal and fraction through `aria-valuetext`.
 
 ## Accessibility and Interaction Quality
 
@@ -247,7 +247,7 @@ The implementation is complete when:
 - each round produces a target within `0.4–2.5` based on its local dimensions;
 - rotation never changes the target ratio;
 - the estimate user object has fixed width and changes only height;
-- Easy, Medium, and Hard use visibly different snapping increments;
+- Easy, Medium, and Hard use the 13-, 27-, and 57-value natural-ratio grids, and every target is exactly reachable on its active grid;
 - submitting freezes the round and slider, computes correct numerical feedback, and displays a comparison overlay;
 - Next shape creates a fresh shape in the selected mode and restores the answering state;
 - target-object, user-object, or difficulty changes create a fresh unanswered round;
